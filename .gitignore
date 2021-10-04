@@ -1,0 +1,8 @@
+build/
+__pycache__/
+pykit.egg-info/
+.DS_Store/
+.pytest_cache
+.idea/
+questdb.log
+
