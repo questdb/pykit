@@ -24,6 +24,10 @@ To uninstall:
 pip3 uninstall pykit
 ```
 
+To publish to Pypi:
+
+[Read this.](https://gist.github.com/asaah18/5dfda79cbddf9ef6a5b74587dfb9e706#publish-a-package-in-pypi)
+
 ### Start/Update QuestDB
 
 Pykit requires a local instance of QuestDB running along, for convenience, you can have Pykit launch it:

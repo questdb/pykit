@@ -29,10 +29,7 @@ import subprocess
 import shutil
 import sys
 
-from pykit.core import (QDB_HOME, QDB_DB_ROOT, QDB_DB_CONF)
-
-# Git clone, automatically checked out on server start, or on module command 'update'
-__clone_folder__ = QDB_HOME / 'clone'
+from pykit.core import (QDB_HOME, QDB_DB_ROOT, QDB_DB_CONF, QDB_CLONE_FOLDER)
 
 
 def _update_command(force: bool = False):
@@ -42,21 +39,21 @@ def _update_command(force: bool = False):
     if not QDB_DB_ROOT.exists():
         QDB_DB_ROOT.mkdir()
         print(f'Created QuestDB\'s data ROOT dir: {QDB_DB_ROOT}')
-    if force and __clone_folder__.exists():
+    if force and QDB_CLONE_FOLDER.exists():
         try:
-            shutil.rmtree(__clone_folder__)
+            shutil.rmtree(QDB_CLONE_FOLDER)
             print('Deleted QuestDB\'s clone')
         except OSError as e:
             print(f'Error deleting QuestDB\'s clone: {e.filename} - {e.strerror}.')
             sys.exit(1)
-    if not __clone_folder__.exists():
+    if not QDB_CLONE_FOLDER.exists():
         print('Cloning QuestDB')
         subprocess.check_output(['git', 'clone', 'git@github.com:questdb/questdb.git', 'clone'], cwd=QDB_HOME)
     else:
         print('Updating QuestDB\'s clone')
-        subprocess.check_output(['git', 'pull'], cwd=__clone_folder__)
+        subprocess.check_output(['git', 'pull'], cwd=QDB_CLONE_FOLDER)
     print("Building QuestDB\'s clone")
-    subprocess.check_output(['mvn', 'clean', 'install', '-DskipTests'], cwd=__clone_folder__)
+    subprocess.check_output(['mvn', 'clean', 'install', '-DskipTests'], cwd=QDB_CLONE_FOLDER)
     print('Update completed')
 
 
@@ -85,7 +82,7 @@ def _start_command():
         with subprocess.Popen(comand,
                               stdout=subprocess.PIPE,
                               universal_newlines=True,
-                              cwd=__clone_folder__) as qdb_proc_pipe:
+                              cwd=QDB_CLONE_FOLDER) as qdb_proc_pipe:
             for stdout_line in iter(qdb_proc_pipe.stdout.readline, ''):
                 print(stdout_line, end='')
             return_code = qdb_proc_pipe.wait()
@@ -108,7 +105,7 @@ def _ensure_conf_exists() -> None:
 
 
 def _find_jar() -> Path:
-    dirs = [__clone_folder__]
+    dirs = [QDB_CLONE_FOLDER]
     while dirs:
         cur_dir = dirs.pop()
         if cur_dir.exists():

@@ -22,6 +22,11 @@
 #
 
 from pykit.core import (
+    VERSION,
+    QDB_HOME,
+    QDB_DB_ROOT,
+    QDB_DB_CONF,
+    QDB_CLONE_FOLDER,
     Metadata,
     TypeMetadata,
     Transaction,
@@ -63,4 +68,13 @@ from pykit.ilp import (
     create_message,
     send_tcp_messages,
     send_udp_messages
+)
+
+from pykit.external import (
+    is_linux,
+    is_macos,
+    is_freebsd,
+    is_windows,
+    is_64b,
+    is_arm_arch
 )

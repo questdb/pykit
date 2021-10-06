@@ -58,6 +58,9 @@ QDB_DB_DATA = QDB_DB_ROOT / 'db'
 # QuestBD's configuration folder, if not exists, create a default one
 QDB_DB_CONF = QDB_DB_ROOT / 'conf'
 
+# Git clone, automatically checked out on server start, or on module command 'update'
+QDB_CLONE_FOLDER = QDB_HOME / 'clone'
+
 
 class TypeMetadata:
     def __init__(self, col_id: int, col_flags: int, col_idx_block_size: int):
