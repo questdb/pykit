@@ -115,7 +115,9 @@ class Metadata:
             with open(self.meta_path, mode='rb') as meta_file:
                 self.column_count = _read_int32(meta_file)
                 self.partition_by = _read_int32(meta_file)
-                self.timestamp_idx = _read_int32(meta_file)
+                timestamp_idx = _read_int32(meta_file)
+                if 0 < timestamp_idx < self.column_count:
+                    self.timestamp_idx = timestamp_idx
                 self.version = _read_int32(meta_file)
                 self.table_id = _read_int32(meta_file)
                 self.max_uncommitted_rows = _read_int32(meta_file)
@@ -260,8 +262,6 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
     metadata = Metadata(table_name)
     transaction = Transaction(table_name)
     ts_idx = metadata.timestamp_idx
-    if not ts_idx:
-        raise ValueError('a designated timestamp column is required')
     dataframes = []
     partitions_root_path = _table_data_root(table_name)
     for p_id in range(transaction.partitions_count):
@@ -269,18 +269,19 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
         p_folder = _partition_folder(partitions_root_path,
                                      partition.p_timestamp,
                                      metadata.partition_by)
+        if metadata.partition_by == PARTITION_BY_NONE:
+            row_count = transaction.row_count
+        elif p_id + 1 < transaction.partitions_count:
+            row_count = partition.p_size
+        else:
+            row_count = transaction.transient_row_count
         column_names = []
         mapped_columns = []
-        index = None
+        if ts_idx is None:
+            index = pd.RangeIndex(name='Idx', start=0, stop=row_count, step=1)
         for i in range(metadata.column_count):
             col_name = metadata.column_names[i]
             if _validate_column(col_name, *columns):
-                if metadata.partition_by == PARTITION_BY_NONE:
-                    row_count = transaction.row_count
-                elif p_id + 1 < transaction.partitions_count:
-                    row_count = partition.p_size
-                else:
-                    row_count = transaction.transient_row_count
                 mm_column = np.memmap(
                     p_folder / f'{col_name}.d',
                     mode='r',
@@ -288,8 +289,8 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
                     dtype=metadata.column_types[i].col_dtype)
                 mm_column.flags['WRITEABLE'] = False
                 mm_column.flags['ALIGNED'] = True
-                if i == ts_idx:
-                    index = Index(data=mm_column)
+                if ts_idx == i:
+                    index = Index(data=mm_column, name=col_name, tupleize_cols=False, copy=False)
                 else:
                     column_names.append(col_name)
                     mapped_columns.append(mm_column)

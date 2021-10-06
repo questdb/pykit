@@ -102,6 +102,7 @@ class DataFrameFromTables(BaseTestTest):
             df = dataframes[0]
             self.assertEqual(
                 '                  int    double' + os.linesep +
+                'ts                             ' + os.linesep +
                 '1633053600123456    0  1.000001' + os.linesep +
                 '1633053660123456    1  2.002002' + os.linesep +
                 '1633140120123456    2  4.404404' + os.linesep +
@@ -150,6 +151,7 @@ class DataFrameFromTables(BaseTestTest):
             df = dataframes[0]
             self.assertEqual(
                 '                  int    double' + os.linesep +
+                'ts                             ' + os.linesep +
                 '1633053600123456    0  1.000001' + os.linesep +
                 '1633053660123456    1  2.002002' + os.linesep +
                 '1633053780123456    3  3.142857' + os.linesep +
@@ -162,6 +164,7 @@ class DataFrameFromTables(BaseTestTest):
             df = dataframes[1]
             self.assertEqual(
                 '                  int    double' + os.linesep +
+                'ts                             ' + os.linesep +
                 '1633140120123456    2  4.404404' + os.linesep +
                 '1633140240123456    4  0.798117',
                 str(df))
@@ -172,10 +175,60 @@ class DataFrameFromTables(BaseTestTest):
             df = dataframes[2]
             self.assertEqual(
                 '                  int    double' + os.linesep +
+                'ts                             ' + os.linesep +
                 '1633226700123456    5  1.414214',
                 str(df))
             self.assertEqual("Index(['int', 'double'], dtype='object')", str(df.columns))
             self.assertEqual((1, 2), df.shape)
             self.assertEqual(1, len(df))
+        finally:
+            drop_table(table_name)
+
+    def test_no_index(self):
+        table_name = 'test_no_index'
+        columns = (
+            ('int', 'INT'),
+            ('double', 'DOUBLE'),
+            ('ts', 'TIMESTAMP'))
+        drop_table(table_name)
+        create_table(table_name, columns)
+        try:
+            insert_values(
+                table_name,
+                columns,
+                (0, 1.000001, to_timestamp('2021-10-01 02:00:00.123456')),
+                (1, 2.002002, to_timestamp('2021-10-01 02:01:00.123456')),
+                (2, 4.404404, to_timestamp('2021-10-02 02:02:00.123456')),
+                (3, 22 / 7, to_timestamp('2021-10-02 02:03:00.123456')),
+                (4, 0.798117, to_timestamp('2021-10-03 02:04:00.123456')),
+                (5, math.sqrt(2), to_timestamp('2021-10-03 02:05:00.123456')),
+                (6, math.sin(math.radians(45.0)), to_timestamp('2021-10-03 02:06:00.123456'))
+            )
+            self.assert_table_content(
+                table_name,
+                '(0, 1.000001, datetime.datetime(2021, 10, 1, 2, 0, 0, 123456))' + os.linesep +
+                '(1, 2.002002, datetime.datetime(2021, 10, 1, 2, 1, 0, 123456))' + os.linesep +
+                '(2, 4.4044039999999995, datetime.datetime(2021, 10, 2, 2, 2, 0, 123456))' + os.linesep +
+                '(3, 3.1428571428571432, datetime.datetime(2021, 10, 2, 2, 3, 0, 123456))' + os.linesep +
+                '(4, 0.798117, datetime.datetime(2021, 10, 3, 2, 4, 0, 123456))' + os.linesep +
+                '(5, 1.4142135623730951, datetime.datetime(2021, 10, 3, 2, 5, 0, 123456))' + os.linesep +
+                '(6, 0.7071067811865475, datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))' + os.linesep)
+            dataframes = df_from_table(table_name, columns)
+            self.assertEqual(1, len(dataframes))
+            df = dataframes[0]
+            self.assertEqual(
+                '     int    double                ts' + os.linesep +
+                'Idx                                 ' + os.linesep +
+                '0      0  1.000001  1633053600123456' + os.linesep +
+                '1      1  2.002002  1633053660123456' + os.linesep +
+                '2      2  4.404404  1633140120123456' + os.linesep +
+                '3      3  3.142857  1633140180123456' + os.linesep +
+                '4      4  0.798117  1633226640123456' + os.linesep +
+                '5      5  1.414214  1633226700123456' + os.linesep +
+                '6      6  0.707107  1633226760123456',
+                str(df))
+            self.assertEqual("Index(['int', 'double', 'ts'], dtype='object')", str(df.columns))
+            self.assertEqual((7, 3), df.shape)
+            self.assertEqual(7, len(df))
         finally:
             drop_table(table_name)
