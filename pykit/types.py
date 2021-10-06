@@ -28,10 +28,11 @@ class ColumnType:
     def __init__(self,
                  type_id: int,
                  type_name: str,
-                 type_dtype: str = None,
-                 supports_dataframe: bool = False):
+                 type_storage_size: int,
+                 type_dtype: str = None):
         self.type_id = type_id
         self.type_name = type_name
+        self.type_storage_size = type_storage_size
         self.type_dtype = type_dtype
 
     @property
@@ -41,6 +42,7 @@ class ColumnType:
     def __str__(self):
         result_str = f'{self.type_name}('
         result_str += f'id:{self.type_id}, '
+        result_str += f'storage size:{self.type_storage_size}, '
         result_str += f'dtype:{self.type_dtype}, '
         result_str += f'dataframe?:{self.supports_dataframe})'
         return result_str
@@ -49,31 +51,31 @@ class ColumnType:
 class ColumnTypes:
     def __init__(self):
         self.types = (
-            ColumnType(0, 'UNDEFINED', None),
-            ColumnType(1, 'BOOLEAN', np.dtype(bool)),
-            ColumnType(2, 'BYTE', None),
-            ColumnType(3, 'SHORT', None),
-            ColumnType(4, 'CHAR', None),
-            ColumnType(5, 'INT', np.int32),
-            ColumnType(6, 'LONG', np.int64),
-            ColumnType(7, 'DATE', np.int64),
-            ColumnType(8, 'TIMESTAMP', np.int64),
-            ColumnType(9, 'FLOAT', None),
-            ColumnType(10, 'DOUBLE', np.float64),
-            ColumnType(11, 'STRING', None),
-            ColumnType(12, 'SYMBOL', None),
-            ColumnType(13, 'LONG256', None),
-            ColumnType(14, 'GEOBYTE', None),
-            ColumnType(15, 'GEOSHORT', None),
-            ColumnType(16, 'GEOINT', None),
-            ColumnType(17, 'GEOLONG', None),
-            ColumnType(18, 'BINARY', None),
-            ColumnType(19, 'PARAMETER', None),
-            ColumnType(20, 'CURSOR', None),
-            ColumnType(21, 'VAR_ARG', None),
-            ColumnType(22, 'RECORD', None),
-            ColumnType(23, 'GEOHASH', None),
-            ColumnType(24, 'NULL', None)
+            ColumnType(0, 'UNDEFINED', None, None),
+            ColumnType(1, 'BOOLEAN', 1, np.dtype(bool)),
+            ColumnType(2, 'BYTE', 1, None),
+            ColumnType(3, 'SHORT', 2, None),
+            ColumnType(4, 'CHAR', 2, None),
+            ColumnType(5, 'INT', 4, np.int32),
+            ColumnType(6, 'LONG', 8, np.int64),
+            ColumnType(7, 'DATE', 8, np.int64),
+            ColumnType(8, 'TIMESTAMP', 8, np.int64),
+            ColumnType(9, 'FLOAT', 4, None),
+            ColumnType(10, 'DOUBLE', 8, np.float64),
+            ColumnType(11, 'STRING', 2, None),
+            ColumnType(12, 'SYMBOL', 2, None),
+            ColumnType(13, 'LONG256', 2, None),
+            ColumnType(14, 'GEOBYTE', 1, None),
+            ColumnType(15, 'GEOSHORT', 2, None),
+            ColumnType(16, 'GEOINT', 4, None),
+            ColumnType(17, 'GEOLONG', 8, None),
+            ColumnType(18, 'BINARY', 1, None),
+            ColumnType(19, 'PARAMETER', None, None),
+            ColumnType(20, 'CURSOR', None, None),
+            ColumnType(21, 'VAR_ARG', None, None),
+            ColumnType(22, 'RECORD', None, None),
+            ColumnType(23, 'GEOHASH', None, None),
+            ColumnType(24, 'NULL', None, None)
         )
 
     def __getitem__(self, item: int):

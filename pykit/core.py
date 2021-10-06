@@ -22,6 +22,7 @@
 #
 
 import numpy as np
+import mmap
 import os
 import pandas as pd
 from pandas.core.internals import BlockManager
@@ -75,6 +76,10 @@ class TypeMetadata:
     @property
     def col_dtype(self):
         return COLUMN_TYPES[self.col_id].type_dtype
+
+    @property
+    def storage_size(self):
+        return COLUMN_TYPES[self.col_id].type_storage_size
 
     def __repr__(self):
         result_str = f'({self.col_name}, '
@@ -282,11 +287,20 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
         for i in range(metadata.column_count):
             col_name = metadata.column_names[i]
             if _validate_column(col_name, *columns):
-                mm_column = np.memmap(
-                    p_folder / f'{col_name}.d',
-                    mode='r',
+                col_type_meta = metadata.column_types[i]
+                with (file_name := open(p_folder / f'{col_name}.d', 'rb')) as fid:
+                    size_to_map = row_count * col_type_meta.storage_size
+                    mm = mmap.mmap(fid.fileno(), size_to_map, access=mmap.ACCESS_READ, offset=0)
+                mm_column = np.ndarray.__new__(
+                    np.memmap,
                     shape=(row_count,),
-                    dtype=metadata.column_types[i].col_dtype)
+                    dtype=metadata.column_types[i].col_dtype,
+                    buffer=mm,
+                    offset=0,
+                    order='C')
+                mm_column._mmap = mm
+                mm_column.mode = 'rb'
+                mm_column.filename = file_name
                 mm_column.flags['WRITEABLE'] = False
                 mm_column.flags['ALIGNED'] = True
                 if ts_idx == i:
