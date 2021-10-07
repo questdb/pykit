@@ -61,7 +61,8 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
                     write_end = wr_offset + p_storage_size
                     col_mmap[wr_offset:write_end] = p_mmap
                     wr_offset = write_end
-            col_np_array = _create_np_array(
+            col_np_array = NDArray.__new__(
+                NDArray,
                 p_file.name,
                 table_info.row_count,
                 table_info.column_dtype(col_idx),
@@ -110,6 +111,31 @@ class BlockManagerUnconsolidated(BlockManager):
         return self.blocks
 
 
+class NDArray(np.ndarray):
+    def __new__(subtype,
+                col_file: str,
+                row_count: int,
+                col_dtype: np.dtype,
+                col_mmap: mmap.mmap):
+        col_np_array = np.ndarray.__new__(
+            NDArray,
+            shape=(row_count,),
+            dtype=col_dtype,
+            buffer=col_mmap,
+            offset=0,
+            order='C')
+        col_np_array._mmap = col_mmap
+        col_np_array.mode = 'rb'
+        col_np_array.filename = col_file
+        col_np_array.flags['WRITEABLE'] = False
+        col_np_array.flags['ALIGNED'] = True
+        return col_np_array
+
+    def __getitem__(self, item):
+        value = super().__getitem__(item)
+        return value
+
+
 def _validate_column(target_col_name: str, *columns: typing.Tuple[str, str]) -> bool:
     for col_name, col_type in columns:
         if col_name == target_col_name and COLUMN_TYPES.resolve(col_type).supports_dataframe:
@@ -117,20 +143,6 @@ def _validate_column(target_col_name: str, *columns: typing.Tuple[str, str]) -> 
     return False
 
 
-def _create_np_array(col_file: str,
-                     row_count: int,
-                     col_dtype: np.dtype,
-                     col_mmap: mmap.mmap) -> np.ndarray:
-    col_np_array = np.ndarray.__new__(
-        np.memmap,
-        shape=(row_count,),
-        dtype=col_dtype,
-        buffer=col_mmap,
-        offset=0,
-        order='C')
-    col_np_array._mmap = col_mmap
-    col_np_array.mode = 'rb'
-    col_np_array.filename = col_file
-    col_np_array.flags['WRITEABLE'] = False
-    col_np_array.flags['ALIGNED'] = True
-    return col_np_array
+def _np_array_getitem(*args, **kwargs):
+    print(f'args:{args}')
+    print(f'kwargs:{kwargs}')
