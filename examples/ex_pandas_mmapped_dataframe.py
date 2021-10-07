@@ -42,7 +42,7 @@ if __name__ == '__main__':
         ('double', 'DOUBLE'),
         ('ts', 'TIMESTAMP'))
     drop_table(table_name)
-    create_table(table_name, columns, designated='ts', partition_by='NONE')
+    create_table(table_name, columns, designated='ts', partition_by='YEAR')
     insert_values(
         table_name,
         columns,
@@ -65,9 +65,9 @@ if __name__ == '__main__':
         (None, 101, True, to_date('2022-01-03'), 215.233883234, to_timestamp('2022-01-03 12:00:59.123459')),
         (17, 101, False, None, 1015.233883234, to_timestamp('2022-11-03 13:00:00.000020')),
     )
+    df = df_from_table(table_name, columns)
     pd.set_option('display.width', 800)
     pd.set_option('max_columns', len(columns))
-    with df_from_table(table_name, columns) as df:
-        print(df.loc[to_timestamp('2022-11-03 13:00:00.000020')]['long'])
-        print(df)
+    print(df.loc[to_timestamp('2022-11-03 13:00:00.000020')]['long'])
+    print(df)
     drop_table(table_name)

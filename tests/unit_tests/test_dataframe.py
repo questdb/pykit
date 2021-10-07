@@ -23,6 +23,7 @@
 
 import math
 import os
+import pandas as pd
 
 from pykit import (
     create_table,
@@ -213,4 +214,28 @@ class DataFrameFromTables(BaseTestTest):
             self.assertEqual(7, len(df))
         finally:
             self.report_mem_snapshot_diff(snapshot_before_df)
+            drop_table(table_name)
+
+    def test_large_table(self):
+        table_name = 'test_large_table'
+        columns = (
+            ('long', 'LONG'),
+            ('int', 'INT'),
+            ('boolean', 'BOOLEAN'),
+            ('date', 'DATE'),
+            ('double', 'DOUBLE'),
+            ('ts', 'TIMESTAMP'))
+        snapshot_start = self.take_mem_snapshot()
+        drop_table(table_name)
+        self.create_rnd_table(table_name, num_rows=10000000)
+        try:
+            snapshot_before_df = self.report_mem_snapshot_diff(snapshot_start, '\nCREATE TABLE')
+            df = df_from_table(table_name, columns)
+            snapshot_after_df = self.report_mem_snapshot_diff(snapshot_before_df, 'DF FROM TABLE')
+            pd.set_option('display.width', 800)
+            pd.set_option('max_columns', len(columns))
+            print(df.tail())
+            print(df.describe())
+        finally:
+            self.report_mem_snapshot_diff(snapshot_after_df, 'SHOW AND TELL')
             drop_table(table_name)

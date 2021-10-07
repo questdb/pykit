@@ -23,11 +23,13 @@
 
 import unittest
 import os
+import psycopg2
 
 from pykit import (
-    select_all
+    select_all,
+    with_cursor,
+    Cursor
 )
-
 from pykit.internal import (
     MemSnapshot,
     mem_snapshot,
@@ -45,5 +47,29 @@ class BaseTestTest(unittest.TestCase):
     def take_mem_snapshot(self):
         return mem_snapshot()
 
-    def report_mem_snapshot_diff(self, snapshot_start: MemSnapshot) -> None:
-        print(mem_snapshot_diff(snapshot_start, mem_snapshot()))
+    def report_mem_snapshot_diff(self, snapshot_start: MemSnapshot, heading: str = None) -> MemSnapshot:
+        snapshot_now = mem_snapshot()
+        if heading is not None:
+            print(heading)
+        print(mem_snapshot_diff(snapshot_start, snapshot_now))
+        return snapshot_now
+
+    def create_rnd_table(self, table_name: str, num_rows: int = 10):
+        def _create_rnd_table(stmt_cursor: Cursor) -> None:
+            statement = f'CREATE TABLE {table_name} AS('
+            statement += 'SELECT'
+            statement += '  rnd_long(0, 9223372036854775807, 1) long, '
+            statement += '  rnd_int(0, 2147483647, 1) int, '
+            statement += '  rnd_boolean() boolean, '
+            statement += "  rnd_date(to_date('1978', 'yyyy'),  to_date('2021', 'yyyy'), 1) date, "
+            statement += '  rnd_double(1) double, '
+            statement += "  rnd_timestamp(to_timestamp('1978', 'yyyy'), to_timestamp('2021', 'yyyy'), 0) ts "
+            statement += 'FROM'
+            statement += f'  long_sequence({num_rows})'
+            statement += ') timestamp(ts) partition by YEAR;'
+            stmt_cursor.execute(statement)
+
+        try:
+            with_cursor(_create_rnd_table)
+        except (Exception, psycopg2.Error) as create_error:
+            print(f'Error while creating rnd table [{table_name}]: {create_error}')

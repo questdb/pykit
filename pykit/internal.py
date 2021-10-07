@@ -104,6 +104,7 @@ def mem_snapshot() -> MemSnapshot:
 
 def mem_snapshot_diff(earlier_snapshot: MemSnapshot, later_snapshot: MemSnapshot) -> MemSnapshot:
     snapshot = MemSnapshot()
+    snapshot.timestamp = later_snapshot.timestamp - earlier_snapshot.timestamp
     snapshot.total_physical = later_snapshot.total_physical - earlier_snapshot.total_physical
     snapshot.used = later_snapshot.used - earlier_snapshot.used
     snapshot.zeroed = later_snapshot.zeroed - earlier_snapshot.zeroed

@@ -304,7 +304,7 @@ class TableInfo:
     def partition_info(self, p_id: int) -> typing.Tuple[Path, int]:
         if 0 <= p_id < self.partitions_count:
             partition = self.transaction.partitions[p_id]
-            p_folder = self._partition_folder(partition.p_timestamp)
+            p_folder = self._partition_folder(partition.p_timestamp, partition.p_name_tx)
             if self.partition_by == PARTITION_BY_NONE:
                 row_count = self.transaction.row_count
             elif p_id + 1 < self.partitions_count:
@@ -314,7 +314,7 @@ class TableInfo:
             return p_folder, row_count
         return None, None
 
-    def _partition_folder(self, date_micros: int) -> Path:
+    def _partition_folder(self, date_micros: int, tx_name: int) -> Path:
         if self.partition_by == PARTITION_BY_DAY:
             folder_name = from_timestamp(date_micros, '%Y-%m-%d')
         elif self.partition_by == PARTITION_BY_MONTH:
@@ -323,6 +323,8 @@ class TableInfo:
             folder_name = from_timestamp(date_micros, '%Y')
         elif self.partition_by == PARTITION_BY_NONE:
             folder_name = 'default'
+        if self.partition_by != PARTITION_BY_NONE and tx_name == 0:
+            folder_name += '.0'
         return self.partitions_root_path / folder_name
 
 
