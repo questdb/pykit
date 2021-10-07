@@ -320,7 +320,8 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
         dataframes.append(pd.DataFrame(
             data=BlockManagerUnconsolidated(
                 blocks=tuple(block_gen()),
-                axes=[Index(data=column_names), index]),
+                axes=[Index(data=column_names), index],
+                verify_integrity=False),
             copy=False))
     return dataframes
 
@@ -329,7 +330,7 @@ class BlockManagerUnconsolidated(BlockManager):
     def __init__(self, *args, **kwargs):
         BlockManager.__init__(self, *args, **kwargs)
         self._is_consolidated = False
-        self._known_consolidated = False
+        self._known_consolidated = True
 
     def _consolidate_inplace(self):
         pass
