@@ -28,6 +28,12 @@ from pykit import (
     select_all
 )
 
+from pykit.internal import (
+    MemSnapshot,
+    mem_snapshot,
+    mem_snapshot_diff
+)
+
 
 class BaseTestTest(unittest.TestCase):
     def assert_table_content(self, table_name: str, expected: str) -> None:
@@ -35,3 +41,9 @@ class BaseTestTest(unittest.TestCase):
         for row in select_all(table_name):
             results += str(row) + os.linesep
         self.assertEqual(expected, results)
+
+    def take_mem_snapshot(self):
+        return mem_snapshot()
+
+    def report_mem_snapshot_diff(self, snapshot_start: MemSnapshot) -> None:
+        print(mem_snapshot_diff(snapshot_start, mem_snapshot()))

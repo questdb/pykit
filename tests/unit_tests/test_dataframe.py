@@ -55,6 +55,7 @@ class DataFrameFromTables(BaseTestTest):
                 (0, 1.000001, to_timestamp('2021-10-01 02:00:00.123456')),
                 (1, 2.002002, to_timestamp('2021-10-01 02:01:00.123456')),
                 (2, 4.404404, to_timestamp('2021-10-02 02:02:00.123456')))
+            snapshot_before_df = self.take_mem_snapshot()
             dataframes = df_from_table(table_name, columns)
             self.assertEqual(1, len(dataframes))
             df = dataframes[0]
@@ -66,6 +67,7 @@ class DataFrameFromTables(BaseTestTest):
             except KeyError as ke:
                 self.assertEqual("'ts'", str(ke))
         finally:
+            self.report_mem_snapshot_diff(snapshot_before_df)
             drop_table(table_name)
 
     def test_no_partitions(self):
@@ -97,6 +99,7 @@ class DataFrameFromTables(BaseTestTest):
                 '(4, 0.798117, datetime.datetime(2021, 10, 3, 2, 4, 0, 123456))' + os.linesep +
                 '(5, 1.4142135623730951, datetime.datetime(2021, 10, 3, 2, 5, 0, 123456))' + os.linesep +
                 '(6, 0.7071067811865475, datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))' + os.linesep)
+            snapshot_before_df = self.take_mem_snapshot()
             dataframes = df_from_table(table_name, columns)
             self.assertEqual(1, len(dataframes))
             df = dataframes[0]
@@ -115,6 +118,7 @@ class DataFrameFromTables(BaseTestTest):
             self.assertEqual((7, 2), df.shape)
             self.assertEqual(7, len(df))
         finally:
+            self.report_mem_snapshot_diff(snapshot_before_df)
             drop_table(table_name)
 
     def test_with_partitions(self):
@@ -146,6 +150,7 @@ class DataFrameFromTables(BaseTestTest):
                 '(2, 4.4044039999999995, datetime.datetime(2021, 10, 2, 2, 2, 0, 123456))' + os.linesep +
                 '(4, 0.798117, datetime.datetime(2021, 10, 2, 2, 4, 0, 123456))' + os.linesep +
                 '(5, 1.4142135623730951, datetime.datetime(2021, 10, 3, 2, 5, 0, 123456))' + os.linesep)
+            snapshot_before_df = self.take_mem_snapshot()
             dataframes = df_from_table(table_name, columns)
             self.assertEqual(3, len(dataframes))
             df = dataframes[0]
@@ -182,6 +187,7 @@ class DataFrameFromTables(BaseTestTest):
             self.assertEqual((1, 2), df.shape)
             self.assertEqual(1, len(df))
         finally:
+            self.report_mem_snapshot_diff(snapshot_before_df)
             drop_table(table_name)
 
     def test_no_index(self):
@@ -213,6 +219,7 @@ class DataFrameFromTables(BaseTestTest):
                 '(4, 0.798117, datetime.datetime(2021, 10, 3, 2, 4, 0, 123456))' + os.linesep +
                 '(5, 1.4142135623730951, datetime.datetime(2021, 10, 3, 2, 5, 0, 123456))' + os.linesep +
                 '(6, 0.7071067811865475, datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))' + os.linesep)
+            snapshot_before_df = self.take_mem_snapshot()
             dataframes = df_from_table(table_name, columns)
             self.assertEqual(1, len(dataframes))
             df = dataframes[0]
@@ -231,4 +238,5 @@ class DataFrameFromTables(BaseTestTest):
             self.assertEqual((7, 3), df.shape)
             self.assertEqual(7, len(df))
         finally:
+            self.report_mem_snapshot_diff(snapshot_before_df)
             drop_table(table_name)

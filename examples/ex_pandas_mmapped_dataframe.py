@@ -67,7 +67,7 @@ if __name__ == '__main__':
     )
     pd.set_option('display.width', 800)
     pd.set_option('max_columns', len(columns))
-    for df in df_from_table(table_name, columns):
+    with df_from_table(table_name, columns) as df:
         print(df.loc[to_timestamp('2022-11-03 13:00:00.000020')]['long'])
         print(df)
     drop_table(table_name)

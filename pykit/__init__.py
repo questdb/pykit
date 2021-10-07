@@ -30,8 +30,7 @@ from pykit.core import (
     Metadata,
     TypeMetadata,
     Transaction,
-    Partition,
-    df_from_table
+    Partition
 )
 
 from pykit.types import (
@@ -78,3 +77,9 @@ from pykit.external import (
     is_64b,
     is_arm_arch
 )
+
+from pykit.dataframe import (
+    df_from_table
+)
+
+import pykit.internal
