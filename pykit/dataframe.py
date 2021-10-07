@@ -29,57 +29,30 @@ import pandas as pd
 from pandas.core.internals import BlockManager
 from pandas.core.internals.blocks import Block
 from pandas.core.indexes.base import Index
-from pathlib import Path
 
-from pykit.ts import (
-    from_timestamp
-)
-from pykit.types import (
-    COLUMN_TYPES,
-    PARTITION_BY_NONE,
-    PARTITION_BY_DAY,
-    PARTITION_BY_MONTH,
-    PARTITION_BY_YEAR
-)
-from pykit.core import (
-    Metadata,
-    Transaction,
-    _table_data_root
-)
+from pykit.core import TableInfo
+from pykit.types import COLUMN_TYPES
 
 
 def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]) -> pd.DataFrame:
-    metadata = Metadata(table_name)
-    transaction = Transaction(table_name)
-    ts_idx = metadata.timestamp_idx
+    table_info = TableInfo(table_name)
     dataframes = []
-    partitions_root_path = _table_data_root(table_name)
-    for p_id in range(transaction.partitions_count):
-        partition = transaction.partitions[p_id]
-        p_folder = _partition_folder(partitions_root_path,
-                                     partition.p_timestamp,
-                                     metadata.partition_by)
-        if metadata.partition_by == PARTITION_BY_NONE:
-            row_count = transaction.row_count
-        elif p_id + 1 < transaction.partitions_count:
-            row_count = partition.p_size
-        else:
-            row_count = transaction.transient_row_count
+    for p_id in range(table_info.partitions_count):
+        p_folder, row_count = table_info.partition_info(p_id)
         column_names = []
         mapped_columns = []
-        if ts_idx is None:
+        if table_info.ts_idx is None:
             index = pd.RangeIndex(name='Idx', start=0, stop=row_count, step=1)
-        for i in range(metadata.column_count):
-            col_name = metadata.column_names[i]
+        for i in range(table_info.column_count):
+            col_name = table_info.column_name(i)
             if _validate_column(col_name, *columns):
-                col_type_meta = metadata.column_types[i]
                 with (file_name := open(p_folder / f'{col_name}.d', 'rb')) as fid:
-                    size_to_map = row_count * col_type_meta.storage_size
+                    size_to_map = row_count * table_info.column_storage_size(i)
                     mm = mmap.mmap(fid.fileno(), size_to_map, access=mmap.ACCESS_READ, offset=0)
                 mm_column = np.ndarray.__new__(
                     np.memmap,
                     shape=(row_count,),
-                    dtype=metadata.column_types[i].col_dtype,
+                    dtype=table_info.column_dtype(i),
                     buffer=mm,
                     offset=0,
                     order='C')
@@ -88,7 +61,7 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
                 mm_column.filename = file_name
                 mm_column.flags['WRITEABLE'] = False
                 mm_column.flags['ALIGNED'] = True
-                if ts_idx == i:
+                if table_info.ts_idx == i:
                     index = Index(data=mm_column, name=col_name, tupleize_cols=False, copy=False)
                 else:
                     column_names.append(col_name)
@@ -102,17 +75,21 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
                     values=column.reshape((1, len(column))),
                     placement=(position,))
 
-        dataframes.append(pd.DataFrame(
+        dataframes.append(WrapperDataFrame(pd.DataFrame(
             data=BlockManagerUnconsolidated(
                 blocks=tuple(block_gen()),
                 axes=[Index(data=column_names), index],
                 verify_integrity=False),
-            copy=False))
+            copy=False)))
     return dataframes
 
 
 class WrapperDataFrame(pd.DataFrame):
-    pass
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
 
 
 class BlockManagerUnconsolidated(BlockManager):
@@ -133,15 +110,3 @@ def _validate_column(target_col_name: str, *columns: typing.Tuple[str, str]) -> 
         if col_name == target_col_name and COLUMN_TYPES.resolve(col_type).supports_dataframe:
             return True
     return False
-
-
-def _partition_folder(partitions_root_path: Path, date_micros: int, partition_by: int) -> Path:
-    if partition_by == PARTITION_BY_DAY:
-        folder_name = from_timestamp(date_micros, '%Y-%m-%d')
-    elif partition_by == PARTITION_BY_MONTH:
-        folder_name = from_timestamp(date_micros, '%Y-%m')
-    elif partition_by == PARTITION_BY_YEAR:
-        folder_name = from_timestamp(date_micros, '%Y')
-    elif partition_by == PARTITION_BY_NONE:
-        folder_name = 'default'
-    return partitions_root_path / folder_name

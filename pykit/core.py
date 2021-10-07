@@ -28,10 +28,15 @@ import typing
 
 from pykit.ts import (
     from_date,
+    from_timestamp
 )
 from pykit.types import (
     COLUMN_TYPES,
-    PARTITION_BY
+    PARTITION_BY,
+    PARTITION_BY_NONE,
+    PARTITION_BY_DAY,
+    PARTITION_BY_MONTH,
+    PARTITION_BY_YEAR
 )
 
 VERSION = '1.0.0'
@@ -110,7 +115,7 @@ class Metadata:
                 self.column_count = _read_int32(meta_file)
                 self.partition_by = _read_int32(meta_file)
                 timestamp_idx = _read_int32(meta_file)
-                if 0 < timestamp_idx < self.column_count:
+                if 0 <= timestamp_idx < self.column_count:
                     self.timestamp_idx = timestamp_idx
                 self.version = _read_int32(meta_file)
                 self.table_id = _read_int32(meta_file)
@@ -250,6 +255,68 @@ class Transaction:
                         result_str += os.linesep
             return result_str
         return None
+
+
+class TableInfo:
+    def __init__(self, table_name: str):
+        self.metadata = Metadata(table_name)
+        self.transaction = Transaction(table_name)
+        self.partitions_root_path = _table_data_root(table_name)
+
+    @property
+    def column_count(self):
+        return self.metadata.column_count
+
+    def column_name(self, col_idx: int) -> str:
+        if 0 <= col_idx < self.column_count:
+            return self.metadata.column_names[col_idx]
+        return None
+
+    def column_storage_size(self, col_idx: int) -> str:
+        if 0 <= col_idx < self.column_count:
+            return self.metadata.column_types[col_idx].storage_size
+        return None
+
+    def column_dtype(self, col_idx: int) -> str:
+        if 0 <= col_idx < self.column_count:
+            return self.metadata.column_types[col_idx].col_dtype
+        return None
+
+    @property
+    def ts_idx(self) -> int:
+        return self.metadata.timestamp_idx
+
+    @property
+    def partition_by(self) -> int:
+        return self.metadata.partition_by
+
+    @property
+    def partitions_count(self) -> int:
+        return self.transaction.partitions_count
+
+    def partition_info(self, p_id: int) -> typing.Tuple[Path, int]:
+        if 0 <= p_id < self.partitions_count:
+            partition = self.transaction.partitions[p_id]
+            p_folder = self._partition_folder(partition.p_timestamp)
+            if self.partition_by == PARTITION_BY_NONE:
+                row_count = self.transaction.row_count
+            elif p_id + 1 < self.partitions_count:
+                row_count = partition.p_size
+            else:
+                row_count = self.transaction.transient_row_count
+            return p_folder, row_count
+        return None, None
+
+    def _partition_folder(self, date_micros: int) -> Path:
+        if self.partition_by == PARTITION_BY_DAY:
+            folder_name = from_timestamp(date_micros, '%Y-%m-%d')
+        elif self.partition_by == PARTITION_BY_MONTH:
+            folder_name = from_timestamp(date_micros, '%Y-%m')
+        elif self.partition_by == PARTITION_BY_YEAR:
+            folder_name = from_timestamp(date_micros, '%Y')
+        elif self.partition_by == PARTITION_BY_NONE:
+            folder_name = 'default'
+        return self.partitions_root_path / folder_name
 
 
 def _table_data_root(table_name: str) -> Path:
