@@ -23,12 +23,12 @@
 
 import unittest
 
-from pykit.external import (
-    _load_os_dependent_questdb_lib
+from pykit.internal import (
+    load_os_dependent_questdb_lib
 )
 
 
 class LoadQuestDBLibTest(unittest.TestCase):
     def test_load_lib(self):
-        self.assertIsNotNone(_load_os_dependent_questdb_lib())
+        self.assertIsNotNone(load_os_dependent_questdb_lib())
 

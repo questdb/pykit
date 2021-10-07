@@ -21,9 +21,40 @@
 #  limitations under the License.
 #
 
+import ctypes
+import struct
 import os
+import platform
 import psutil
 from datetime import datetime
+
+from pykit import (
+    QDB_CLONE_FOLDER
+)
+
+
+def is_64b():
+    return 64 != struct.calcsize('P') * 8
+
+
+def is_arm_arch():
+    return platform.machine().startswith('arm')
+
+
+def is_linux():
+    return platform.system() == 'Linux'
+
+
+def is_macos():
+    return platform.system() == 'Darwin'
+
+
+def is_windows():
+    return platform.system() == 'Windows'
+
+
+def is_freebsd():
+    return platform.system() == 'FreeBSD'
 
 
 class MemSnapshot:
@@ -80,6 +111,34 @@ def mem_snapshot_diff(earlier_snapshot: MemSnapshot, later_snapshot: MemSnapshot
     snapshot.total_virtual = later_snapshot.total_virtual - earlier_snapshot.total_virtual
     snapshot.proc_resident_set = later_snapshot.proc_resident_set - earlier_snapshot.proc_resident_set
     return snapshot
+
+
+__ext_libs_root_ = QDB_CLONE_FOLDER / 'core' / 'src' / 'main' / 'resources' / 'io' / 'questdb' / 'bin'
+
+
+def load_os_dependent_questdb_lib():
+    if 64 != struct.calcsize('P') * 8:
+        raise Exception('QuestDB requires 64-bit Python')
+    sys_name = platform.system()
+    sys_arch = platform.machine()
+    if sys_name == 'Linux':
+        file_ext = 'so'
+        sys_folder = 'armlinux' if sys_arch == 'arm64' else 'linux'
+    elif sys_name == 'Darwin':  # MacOS
+        file_ext = 'dylib'
+        sys_folder = 'armosx' if sys_arch == 'arm64' else 'osx'
+    elif sys_name == 'Windows':
+        file_ext = 'dll'
+        sys_folder = 'windows'
+    elif sys_name == 'FreeBSD':
+        file_ext = 'so'
+        sys_folder = 'freebsd'
+    else:
+        raise Exception(f'unsupported OS: {sys_name}')
+    lib_path = __ext_libs_root_ / sys_folder / f'libquestdb.{file_ext}'
+    if sys_name == 'Windows':
+        return ctypes.windll.LoadLibrary(lib_path)
+    return ctypes.cdll.LoadLibrary(lib_path)
 
 
 __bytes_scale__ = {

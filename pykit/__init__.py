@@ -69,15 +69,6 @@ from pykit.ilp import (
     send_udp_messages
 )
 
-from pykit.external import (
-    is_linux,
-    is_macos,
-    is_freebsd,
-    is_windows,
-    is_64b,
-    is_arm_arch
-)
-
 from pykit.dataframe import (
     df_from_table
 )
