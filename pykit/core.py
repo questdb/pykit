@@ -264,6 +264,10 @@ class TableInfo:
         self.partitions_root_path = _table_data_root(table_name)
 
     @property
+    def row_count(self):
+        return self.transaction.row_count
+
+    @property
     def column_count(self):
         return self.metadata.column_count
 
@@ -285,6 +289,9 @@ class TableInfo:
     @property
     def ts_idx(self) -> int:
         return self.metadata.timestamp_idx
+
+    def is_partitioned(self) -> bool:
+        return self.metadata.partition_by != PARTITION_BY_NONE
 
     @property
     def partition_by(self) -> int:

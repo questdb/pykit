@@ -56,16 +56,14 @@ class DataFrameFromTables(BaseTestTest):
                 (1, 2.002002, to_timestamp('2021-10-01 02:01:00.123456')),
                 (2, 4.404404, to_timestamp('2021-10-02 02:02:00.123456')))
             snapshot_before_df = self.take_mem_snapshot()
-            dataframes = df_from_table(table_name, columns)
-            self.assertEqual(1, len(dataframes))
-            with dataframes[0] as df:
-                assert_read_only(df["int"].iloc)
-                assert_read_only(df["double"].iloc)
-                assert_read_only(df.index.array)
-                try:
-                    df["ts"].iloc
-                except KeyError as ke:
-                    self.assertEqual("'ts'", str(ke))
+            df = df_from_table(table_name, columns)
+            assert_read_only(df["int"].iloc)
+            assert_read_only(df["double"].iloc)
+            assert_read_only(df.index.array)
+            try:
+                df["ts"].iloc
+            except KeyError as ke:
+                self.assertEqual("'ts'", str(ke))
         finally:
             self.report_mem_snapshot_diff(snapshot_before_df)
             drop_table(table_name)
@@ -77,7 +75,7 @@ class DataFrameFromTables(BaseTestTest):
             ('double', 'DOUBLE'),
             ('ts', 'TIMESTAMP'))
         drop_table(table_name)
-        create_table(table_name, columns, designated='ts')
+        create_table(table_name, columns, designated='ts', partition_by=None)
         try:
             insert_values(
                 table_name,
@@ -100,23 +98,21 @@ class DataFrameFromTables(BaseTestTest):
                 '(5, 1.4142135623730951, datetime.datetime(2021, 10, 3, 2, 5, 0, 123456))' + os.linesep +
                 '(6, 0.7071067811865475, datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))' + os.linesep)
             snapshot_before_df = self.take_mem_snapshot()
-            dataframes = df_from_table(table_name, columns)
-            self.assertEqual(1, len(dataframes))
-            with dataframes[0] as df:
-                self.assertEqual(
-                    '                  int    double' + os.linesep +
-                    'ts                             ' + os.linesep +
-                    '1633053600123456    0  1.000001' + os.linesep +
-                    '1633053660123456    1  2.002002' + os.linesep +
-                    '1633140120123456    2  4.404404' + os.linesep +
-                    '1633140180123456    3  3.142857' + os.linesep +
-                    '1633226640123456    4  0.798117' + os.linesep +
-                    '1633226700123456    5  1.414214' + os.linesep +
-                    '1633226760123456    6  0.707107',
-                    str(df))
-                self.assertEqual("Index(['int', 'double'], dtype='object')", str(df.columns))
-                self.assertEqual((7, 2), df.shape)
-                self.assertEqual(7, len(df))
+            df = df_from_table(table_name, columns)
+            self.assertEqual(
+                '                  int    double' + os.linesep +
+                'ts                             ' + os.linesep +
+                '1633053600123456    0  1.000001' + os.linesep +
+                '1633053660123456    1  2.002002' + os.linesep +
+                '1633140120123456    2  4.404404' + os.linesep +
+                '1633140180123456    3  3.142857' + os.linesep +
+                '1633226640123456    4  0.798117' + os.linesep +
+                '1633226700123456    5  1.414214' + os.linesep +
+                '1633226760123456    6  0.707107',
+                str(df))
+            self.assertEqual("Index(['int', 'double'], dtype='object')", str(df.columns))
+            self.assertEqual((7, 2), df.shape)
+            self.assertEqual(7, len(df))
         finally:
             self.report_mem_snapshot_diff(snapshot_before_df)
             drop_table(table_name)
@@ -151,41 +147,21 @@ class DataFrameFromTables(BaseTestTest):
                 '(4, 0.798117, datetime.datetime(2021, 10, 2, 2, 4, 0, 123456))' + os.linesep +
                 '(5, 1.4142135623730951, datetime.datetime(2021, 10, 3, 2, 5, 0, 123456))' + os.linesep)
             snapshot_before_df = self.take_mem_snapshot()
-            dataframes = df_from_table(table_name, columns)
-            self.assertEqual(3, len(dataframes))
-            with dataframes[0] as df:
-                self.assertEqual(
-                    '                  int    double' + os.linesep +
-                    'ts                             ' + os.linesep +
-                    '1633053600123456    0  1.000001' + os.linesep +
-                    '1633053660123456    1  2.002002' + os.linesep +
-                    '1633053780123456    3  3.142857' + os.linesep +
-                    '1633053960123456    6  0.707107',
-                    str(df))
-                self.assertEqual("Index(['int', 'double'], dtype='object')", str(df.columns))
-                self.assertEqual((4, 2), df.shape)
-                self.assertEqual(4, len(df))
-
-            with dataframes[1] as df:
-                self.assertEqual(
-                    '                  int    double' + os.linesep +
-                    'ts                             ' + os.linesep +
-                    '1633140120123456    2  4.404404' + os.linesep +
-                    '1633140240123456    4  0.798117',
-                    str(df))
-                self.assertEqual("Index(['int', 'double'], dtype='object')", str(df.columns))
-                self.assertEqual((2, 2), df.shape)
-                self.assertEqual(2, len(df))
-
-            with dataframes[2] as df:
-                self.assertEqual(
-                    '                  int    double' + os.linesep +
-                    'ts                             ' + os.linesep +
-                    '1633226700123456    5  1.414214',
-                    str(df))
-                self.assertEqual("Index(['int', 'double'], dtype='object')", str(df.columns))
-                self.assertEqual((1, 2), df.shape)
-                self.assertEqual(1, len(df))
+            df = df_from_table(table_name, columns)
+            self.assertEqual(
+                '                  int    double' + os.linesep +
+                'ts                             ' + os.linesep +
+                '1633053600123456    0  1.000001' + os.linesep +
+                '1633053660123456    1  2.002002' + os.linesep +
+                '1633053780123456    3  3.142857' + os.linesep +
+                '1633053960123456    6  0.707107' + os.linesep +
+                '1633140120123456    2  4.404404' + os.linesep +
+                '1633140240123456    4  0.798117' + os.linesep +
+                '1633226700123456    5  1.414214',
+                str(df))
+            self.assertEqual("Index(['int', 'double'], dtype='object')", str(df.columns))
+            self.assertEqual((7, 2), df.shape)
+            self.assertEqual(7, len(df))
         finally:
             self.report_mem_snapshot_diff(snapshot_before_df)
             drop_table(table_name)
@@ -220,23 +196,21 @@ class DataFrameFromTables(BaseTestTest):
                 '(5, 1.4142135623730951, datetime.datetime(2021, 10, 3, 2, 5, 0, 123456))' + os.linesep +
                 '(6, 0.7071067811865475, datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))' + os.linesep)
             snapshot_before_df = self.take_mem_snapshot()
-            dataframes = df_from_table(table_name, columns)
-            self.assertEqual(1, len(dataframes))
-            with dataframes[0] as df:
-                self.assertEqual(
-                    '     int    double                ts' + os.linesep +
-                    'Idx                                 ' + os.linesep +
-                    '0      0  1.000001  1633053600123456' + os.linesep +
-                    '1      1  2.002002  1633053660123456' + os.linesep +
-                    '2      2  4.404404  1633140120123456' + os.linesep +
-                    '3      3  3.142857  1633140180123456' + os.linesep +
-                    '4      4  0.798117  1633226640123456' + os.linesep +
-                    '5      5  1.414214  1633226700123456' + os.linesep +
-                    '6      6  0.707107  1633226760123456',
-                    str(df))
-                self.assertEqual("Index(['int', 'double', 'ts'], dtype='object')", str(df.columns))
-                self.assertEqual((7, 3), df.shape)
-                self.assertEqual(7, len(df))
+            df = df_from_table(table_name, columns)
+            self.assertEqual(
+                '     int    double                ts' + os.linesep +
+                'Idx                                 ' + os.linesep +
+                '0      0  1.000001  1633053600123456' + os.linesep +
+                '1      1  2.002002  1633053660123456' + os.linesep +
+                '2      2  4.404404  1633140120123456' + os.linesep +
+                '3      3  3.142857  1633140180123456' + os.linesep +
+                '4      4  0.798117  1633226640123456' + os.linesep +
+                '5      5  1.414214  1633226700123456' + os.linesep +
+                '6      6  0.707107  1633226760123456',
+                str(df))
+            self.assertEqual("Index(['int', 'double', 'ts'], dtype='object')", str(df.columns))
+            self.assertEqual((7, 3), df.shape)
+            self.assertEqual(7, len(df))
         finally:
             self.report_mem_snapshot_diff(snapshot_before_df)
             drop_table(table_name)
