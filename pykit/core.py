@@ -286,6 +286,21 @@ class TableInfo:
             return self.metadata.column_types[col_idx].col_dtype
         return None
 
+    def column_type(self, col_idx: int) -> str:
+        if 0 <= col_idx < self.column_count:
+            return self.metadata.column_types[col_idx].col_id
+        return None
+
+    def column_type_flags(self, col_idx: int) -> str:
+        if 0 <= col_idx < self.column_count:
+            return self.metadata.column_types[col_idx].col_flags
+        return None
+
+    def column_type_idx_block_size(self, col_idx: int) -> str:
+        if 0 <= col_idx < self.column_count:
+            return self.metadata.column_types[col_idx].col_idx_block_size
+        return None
+
     @property
     def ts_idx(self) -> int:
         return self.metadata.timestamp_idx

@@ -26,7 +26,6 @@ import mmap
 import typing
 import pandas as pd
 from pandas.core.internals import (BlockManager, make_block)
-from pandas.core.internals.blocks import Block
 from pandas.core.indexes.base import Index
 from pykit.core import TableInfo
 from pykit.types import COLUMN_TYPES
@@ -36,8 +35,8 @@ NOT_STORED_ANONYMOUS_MEMORY = -1
 
 def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]) -> pd.DataFrame:
     table_info = TableInfo(table_name)
-    column_names = []
-    column_np_arrays = []
+    df_column_names = []
+    df_column_np_arrays = []
     for col_idx in range(table_info.column_count):
         col_name = table_info.column_name(col_idx)
         if _validate_column(col_name, *columns):
@@ -61,13 +60,12 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
                     write_end = wr_offset + p_storage_size
                     col_mmap[wr_offset:write_end] = p_mmap
                     wr_offset = write_end
-            col_np_array = NDArray.__new__(
-                NDArray,
-                p_file.name,
-                table_info.row_count,
-                table_info.column_dtype(col_idx),
-                col_mmap
-            )
+            col_np_array = NPArray(
+                col_file=p_file.name,
+                row_count=table_info.row_count,
+                col_type=table_info.column_type(col_idx),
+                col_dtype=table_info.column_dtype(col_idx),
+                col_mmap=col_mmap)
             if table_info.ts_idx == col_idx:
                 index = Index(
                     data=col_np_array,
@@ -75,25 +73,22 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
                     tupleize_cols=False,
                     copy=False)
             else:
-                column_names.append(col_name)
-                column_np_arrays.append(col_np_array)
+                df_column_names.append(col_name)
+                df_column_np_arrays.append(col_np_array)
     if table_info.ts_idx is None:
         index = pd.RangeIndex(
             name='Idx',
             start=0,
             stop=table_info.row_count,
             step=1)
-
-    def _block_gen() -> typing.Sequence[Block]:
-        for position, column in enumerate(column_np_arrays):
-            yield make_block(
-                values=column.reshape((1, len(column))),
-                placement=(position,))
-
+    df_blocks = tuple(make_block(
+        values=column.reshape((1, len(column))),
+        placement=(position,)
+    ) for position, column in enumerate(df_column_np_arrays))
     return pd.DataFrame(
         data=BlockManagerUnconsolidated(
-            blocks=tuple(_block_gen()),
-            axes=[Index(data=column_names), index],
+            blocks=df_blocks,
+            axes=[Index(data=df_column_names), index],
             verify_integrity=False),
         copy=False)
 
@@ -111,14 +106,15 @@ class BlockManagerUnconsolidated(BlockManager):
         return self.blocks
 
 
-class NDArray(np.ndarray):
-    def __new__(subtype,
+class NPArray(np.ndarray):
+    def __new__(cls,
                 col_file: str,
                 row_count: int,
+                col_type: int,
                 col_dtype: np.dtype,
                 col_mmap: mmap.mmap):
         col_np_array = np.ndarray.__new__(
-            NDArray,
+            NPArray,
             shape=(row_count,),
             dtype=col_dtype,
             buffer=col_mmap,
