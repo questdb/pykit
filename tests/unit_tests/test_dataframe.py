@@ -227,7 +227,7 @@ class DataFrameFromTables(BaseTestTest):
             ('ts', 'TIMESTAMP'))
         snapshot_start = self.take_mem_snapshot()
         drop_table(table_name)
-        self.create_rnd_table(table_name, num_rows=100000)
+        self.create_rnd_table(table_name, num_rows=1000000)
         try:
             snapshot_before_df = self.report_mem_snapshot_diff(snapshot_start, '\nCREATE TABLE')
             df = df_from_table(table_name, columns)

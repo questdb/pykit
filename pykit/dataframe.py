@@ -28,7 +28,6 @@ import pandas as pd
 from pandas.core.internals import (BlockManager, make_block)
 from pandas.core.indexes.base import Index
 from pykit.core import TableInfo
-from pykit.types import COLUMN_TYPES
 
 NOT_STORED_ANONYMOUS_MEMORY = -1
 
@@ -63,7 +62,7 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
             col_np_array = NPArray(
                 col_file=p_file.name,
                 row_count=table_info.row_count,
-                col_type=table_info.column_type(col_idx),
+                col_type=table_info.column_type_id(col_idx),
                 col_dtype=table_info.column_dtype(col_idx),
                 col_mmap=col_mmap)
             if table_info.ts_idx == col_idx:
@@ -106,6 +105,13 @@ class BlockManagerUnconsolidated(BlockManager):
         return self.blocks
 
 
+def _validate_column(target_col_name: str, *columns: typing.Tuple[str, str]) -> bool:
+    for col_name, col_type in columns:
+        if col_name == target_col_name:
+            return True
+    return False
+
+
 class NPArray(np.ndarray):
     def __new__(cls,
                 col_file: str,
@@ -120,25 +126,20 @@ class NPArray(np.ndarray):
             buffer=col_mmap,
             offset=0,
             order='C')
-        col_np_array._mmap = col_mmap
-        col_np_array.mode = 'rb'
         col_np_array.filename = col_file
+        col_np_array.mode = 'rb'
         col_np_array.flags['WRITEABLE'] = False
         col_np_array.flags['ALIGNED'] = True
+        col_np_array._mmap = col_mmap
         return col_np_array
 
-    def __getitem__(self, item):
-        value = super().__getitem__(item)
-        return value
-
-
-def _validate_column(target_col_name: str, *columns: typing.Tuple[str, str]) -> bool:
-    for col_name, col_type in columns:
-        if col_name == target_col_name and COLUMN_TYPES.resolve(col_type).supports_dataframe:
-            return True
-    return False
-
-
-def _np_array_getitem(*args, **kwargs):
-    print(f'args:{args}')
-    print(f'kwargs:{kwargs}')
+    # def __getitem__(self, idx):
+    #     col_type = self.dtype.metadata['type_id']
+    #     value = super().__getitem__(idx)
+    #     print(f'VALUE.class: {value.__class__}, idx: {idx} (idx.class: {idx.__class__})')
+    #     if not isinstance(value, NPArray):
+    #         if col_type == 5 and value == -2147483648:
+    #             return 0
+    #         if 6 <= col_type <= 8 and value == -9223372036854775808:
+    #             return 0
+    #     return value

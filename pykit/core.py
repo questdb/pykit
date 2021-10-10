@@ -21,6 +21,8 @@
 #  limitations under the License.
 #
 
+from enum import Enum
+import numpy as np
 import os
 from pathlib import Path
 import sys
@@ -29,14 +31,6 @@ import typing
 from pykit.ts import (
     from_date,
     from_timestamp
-)
-from pykit.types import (
-    COLUMN_TYPES,
-    PARTITION_BY,
-    PARTITION_BY_NONE,
-    PARTITION_BY_DAY,
-    PARTITION_BY_MONTH,
-    PARTITION_BY_YEAR
 )
 
 VERSION = '1.0.0'
@@ -57,44 +51,103 @@ QDB_DB_CONF = QDB_DB_ROOT / 'conf'
 QDB_CLONE_FOLDER = QDB_HOME / 'clone'
 
 
-class TypeMetadata:
-    def __init__(self, col_id: int, col_flags: int, col_idx_block_size: int):
-        self.col_id = col_id
-        self.col_flags = col_flags
-        self.col_idx_block_size = col_idx_block_size
+class ColumnType:
+    def __init__(self, dtype: np.dtype, metadata: typing.Dict[str, typing.Any]):
+        self.dtype = dtype
+        self.metadata = metadata
 
     @property
-    def col_name(self):
-        return COLUMN_TYPES[self.col_id].type_name
+    def type_id(self) -> int:
+        return self.metadata['type_id']
 
     @property
-    def col_dtype(self):
-        return COLUMN_TYPES[self.col_id].type_dtype
+    def type_name(self) -> str:
+        return self.metadata['type_name']
 
     @property
-    def storage_size(self):
-        return COLUMN_TYPES[self.col_id].type_storage_size
-
-    def __repr__(self):
-        result_str = f'({self.col_name}, '
-        result_str += f'{self.col_id}, '
-        result_str += f'{self.col_flags}, '
-        result_str += f'{self.col_idx_block_size}, '
-        result_str += f'{str(self.col_dtype)})'
-        return result_str
+    def type_storage_size(self) -> int:
+        return self.metadata['type_storage_size']
 
     def __str__(self):
-        result_str = self.col_name
-        result_str += f'[flags: {self.col_flags}, '
-        result_str += f'index block size: {self.col_idx_block_size}, '
-        result_str += f'dtype: {self.col_dtype}]'
+        return f'{self.type_name}({self.type_id}, dtype:{self.dtype}, metadata:{self.metadata})'
+
+
+class ColumnTypes:
+    UNDEFINED = ColumnType(bool, metadata={'type_id': 0, 'type_name': 'UNDEFINED', 'type_storage_size': 0})
+    BOOLEAN = ColumnType(bool, metadata={'type_id': 1, 'type_name': 'BOOLEAN', 'type_storage_size': 1})
+    BYTE = ColumnType(np.int8, metadata={'type_id': 2, 'type_name': 'BYTE', 'type_storage_size': 1})
+    SHORT = ColumnType(np.int16, metadata={'type_id': 3, 'type_name': 'SHORT', 'type_storage_size': 2})
+    CHAR = ColumnType(np.int16, metadata={'type_id': 4, 'type_name': 'CHAR', 'type_storage_size': 2})
+    INT = ColumnType(np.int32, metadata={'type_id': 5, 'type_name': 'INT', 'type_storage_size': 4})
+    LONG = ColumnType(np.int64, metadata={'type_id': 6, 'type_name': 'LONG', 'type_storage_size': 8})
+    DATE = ColumnType(np.int64, metadata={'type_id': 7, 'type_name': 'DATE', 'type_storage_size': 8})
+    TIMESTAMP = ColumnType(np.int64, metadata={'type_id': 8, 'type_name': 'TIMESTAMP', 'type_storage_size': 8})
+    FLOAT = ColumnType(np.float32, metadata={'type_id': 9, 'type_name': 'FLOAT', 'type_storage_size': 4})
+    DOUBLE = ColumnType(np.float64, metadata={'type_id': 10, 'type_name': 'DOUBLE', 'type_storage_size': 8})
+    STRING = ColumnType(bool, metadata={'type_id': 11, 'type_name': 'STRING', 'type_storage_size': 2})
+    SYMBOL = ColumnType(bool, metadata={'type_id': 12, 'type_name': 'SYMBOL', 'type_storage_size': 2})
+    LONG256 = ColumnType(bool, metadata={'type_id': 13, 'type_name': 'LONG256', 'type_storage_size': 2})
+    GEOBYTE = ColumnType(bool, metadata={'type_id': 14, 'type_name': 'GEOBYTE', 'type_storage_size': 1})
+    GEOSHORT = ColumnType(bool, metadata={'type_id': 15, 'type_name': 'GEOSHORT', 'type_storage_size': 2})
+    GEOINT = ColumnType(bool, metadata={'type_id': 16, 'type_name': 'GEOINT', 'type_storage_size': 4})
+    GEOLONG = ColumnType(bool, metadata={'type_id': 17, 'type_name': 'GEOLONG', 'type_storage_size': 8})
+    BINARY = ColumnType(bool, metadata={'type_id': 18, 'type_name': 'BINARY', 'type_storage_size': 1})
+    PARAMETER = ColumnType(bool, metadata={'type_id': 19, 'type_name': 'PARAMETER', 'type_storage_size': 0})
+    CURSOR = ColumnType(bool, metadata={'type_id': 20, 'type_name': 'CURSOR', 'type_storage_size': 0})
+    VAR_ARG = ColumnType(bool, metadata={'type_id': 21, 'type_name': 'VAR_ARG', 'type_storage_size': 0})
+    RECORD = ColumnType(bool, metadata={'type_id': 22, 'type_name': 'RECORD', 'type_storage_size': 0})
+    GEOHASH = ColumnType(bool, metadata={'type_id': 23, 'type_name': 'GEOHASH', 'type_storage_size': 0})
+    NULL = ColumnType(bool, metadata={'type_id': 24, 'type_name': 'NULL', 'type_storage_size': 0})
+
+    __values = (  # leave them in this order
+        UNDEFINED, BOOLEAN, BYTE, SHORT, CHAR, INT,
+        LONG, DATE, TIMESTAMP, FLOAT, DOUBLE, STRING,
+        SYMBOL, LONG256, GEOBYTE, GEOSHORT, GEOINT, GEOLONG,
+        BINARY, PARAMETER, CURSOR, VAR_ARG, RECORD, GEOHASH,
+        NULL
+    )
+
+    @staticmethod
+    def resolve(type_id: int) -> ColumnType:
+        for col_type in ColumnTypes.__values:
+            if type_id == col_type.type_id:
+                return col_type
+        return ColumnType.UNDEFINED
+
+
+class PartitionBy(Enum):
+    DAY = 0
+    MONTH = 1
+    YEAR = 2
+    NONE = 3
+
+    @staticmethod
+    def resolve(partition_id: int):
+        for partition_by in PartitionBy:
+            if partition_id == partition_by.value:
+                return partition_by
+        return PartitionBy.NONE
+
+
+class TypeMetadata(ColumnType):
+    def __new__(cls, type_id: int, type_flags: int, type_idx_block_size: int):
+        return ColumnTypes.resolve(type_id)
+
+    def __init__(self, type_id: int, type_flags: int, type_idx_block_size: int):
+        self.type_flags = type_flags
+        self.type_idx_block_size = type_idx_block_size
+
+    def __str__(self):
+        result_str = str(self)
+        result_str += f' [flags: {self.type_flags}, '
+        result_str += f'index block size: {self.type_idx_block_size}]'
         return result_str
 
 
 class Metadata:
     def __init__(self, table_name: str):
         self.table_name = table_name
-        self.meta_path = table_name
+        self.meta_path = None
         self.column_count = None
         self.partition_by = None
         self.timestamp_idx = None
@@ -112,28 +165,27 @@ class Metadata:
         if table_root_path := _table_data_root(self.table_name):
             self.meta_path = table_root_path / '_meta'
             with open(self.meta_path, mode='rb') as meta_file:
-                self.column_count = _read_int32(meta_file)
-                self.partition_by = _read_int32(meta_file)
-                timestamp_idx = _read_int32(meta_file)
+                self.column_count = _read_int32(meta_file, offset=0)
+                self.partition_by = PartitionBy.resolve(_read_int32(meta_file, offset=4))
+                timestamp_idx = _read_int32(meta_file, offset=8)
                 if 0 <= timestamp_idx < self.column_count:
                     self.timestamp_idx = timestamp_idx
-                self.version = _read_int32(meta_file)
-                self.table_id = _read_int32(meta_file)
-                self.max_uncommitted_rows = _read_int32(meta_file)
-                self.commit_lag = _read_int64(meta_file)
+                self.version = _read_int32(meta_file, offset=12)
+                self.table_id = _read_int32(meta_file, offset=16)
+                self.max_uncommitted_rows = _read_int32(meta_file, offset=20)
+                self.commit_lag = _read_int64(meta_file, offset=24)
+                name_offset = 128 + self.column_count * 16
                 for i in range(self.column_count):
-                    meta_file.seek(128 + i * 16)
+                    type_offset = 128 + i * 16
                     self.column_types.append(
                         TypeMetadata(
-                            col_id=_read_int32(meta_file),
-                            col_flags=_read_int32(meta_file),
-                            col_idx_block_size=_read_int32(meta_file)))
-                name_offset = 128 + self.column_count * 16
-                meta_file.seek(name_offset)
-                for i in range(self.column_count):
-                    name_len = _read_int32(meta_file)
-                    col_name = bytes(b for b in meta_file.read(name_len * 2) if b).decode('utf-8')
+                            type_id=_read_int32(meta_file, offset=type_offset),
+                            type_flags=_read_int64(meta_file, offset=type_offset + 4),
+                            type_idx_block_size=_read_int32(meta_file, offset=type_offset + 4 + 8)))
+                    name_len = _read_int32(meta_file, name_offset)
+                    col_name = meta_file.read(name_len * 2).decode('utf-16')
                     self.column_names.append(col_name)
+                    name_offset += 4 + name_len * 2
 
     def __str__(self):
         if self.meta_path:
@@ -144,12 +196,12 @@ class Metadata:
             result_str += f'column_count: {self.column_count}{os.linesep}'
             for i in range(self.column_count):
                 result_str += f'- {i}: {self.column_types[i]}{os.linesep}'
-            if 0 <= self.timestamp_idx < len(self.column_names):
+            if 0 <= self.timestamp_idx < self.column_count:
                 ts_value = self.column_names[self.timestamp_idx]
             else:
                 ts_value = 'NONE'
             result_str += f'timestamp_idx: {ts_value}{os.linesep}'
-            result_str += f'partition_by: {PARTITION_BY[self.partition_by]}{os.linesep}'
+            result_str += f'partition_by: {self.partition_by}{os.linesep}'
             result_str += f'max_uncommitted_rows: {self.max_uncommitted_rows}{os.linesep}'
             result_str += f'commit_lag: {self.commit_lag}'
             return result_str
@@ -161,11 +213,11 @@ class Partition:
         self.p_id = p_id
         self.p_timestamp = p_timestamp
         self.p_size = p_size
-        self.p_name_tx = p_name_tx
-        self.p_data_tx = p_data_tx
+        self.p_name_tx = p_name_tx if p_name_tx != 0xFFFFFFFFFFFFFFFF else -1
+        self.p_data_tx = p_data_tx if p_data_tx != 0xFFFFFFFFFFFFFFFF else -1
 
     def __str__(self):
-        result_str = f'Partition(id:{self.p_id}, '
+        result_str = f'id:{self.p_id}, '
         result_str += f'ts:{from_date(self.p_timestamp)}, '
         result_str += f'ts epoch:{self.p_timestamp}, '
         result_str += f'size:{self.p_size}, '
@@ -189,6 +241,7 @@ class Transaction:
         self.partition_table_version = None
         self.txn_check = None
         self.symbols_count = None
+        self.partitions_count = None
         self.partition_table_size = None
         self.partitions = []
         self.reload()
@@ -198,32 +251,29 @@ class Transaction:
             self.root_path = table_root_path
             self.txn_path = self.root_path / '_txn'
             with open(self.txn_path, mode='rb') as txn_file:
-                self.txn_id = _read_int64(txn_file)
-                self.transient_row_count = _read_int64(txn_file)
-                self.fixed_row_count = _read_int64(txn_file)
-                self.min_timestamp = _read_int64(txn_file)
-                self.max_timestamp = _read_int64(txn_file)
-                self.struct_version = _read_int64(txn_file)
-                self.data_version = _read_int64(txn_file)
-                self.partition_table_version = _read_int64(txn_file)
-                self.txn_check = _read_int64(txn_file)
-                self.symbols_count = _read_int32(txn_file)
-                txn_file.seek(76 + self.symbols_count * 8)
-                self.partition_table_size = int(_read_int32(txn_file) / 8)
+                self.txn_id = _read_int64(txn_file, offset=0)
+                self.transient_row_count = _read_int64(txn_file, offset=8)
+                self.fixed_row_count = _read_int64(txn_file, offset=16)
+                self.min_timestamp = _read_int64(txn_file, offset=24)
+                self.max_timestamp = _read_int64(txn_file, offset=32)
+                self.struct_version = _read_int64(txn_file, offset=40)
+                self.data_version = _read_int64(txn_file, offset=48)
+                self.partition_table_version = _read_int64(txn_file, offset=56)
+                self.txn_check = _read_int64(txn_file, offset=64)
+                self.symbols_count = _read_int32(txn_file, offset=72)
+                partition_table_offset = 72 + 4 + self.symbols_count * 8
+                self.partition_table_size = int(_read_int32(txn_file, offset=partition_table_offset) / 8)
+                self.partitions_count = int(self.partition_table_size / 4)
                 self.partitions.clear()
-                for i in range(self.partitions_count):
+                for partition_id in range(self.partitions_count):
+                    partition_offset = partition_table_offset + 4 + partition_id * 32
                     self.partitions.append(Partition(
-                        i,
-                        _read_int64(txn_file),
-                        _read_int64(txn_file),
-                        _read_int64(txn_file),
-                        _read_int64(txn_file)))
+                        partition_id,
+                        _read_int64(txn_file, offset=partition_offset),
+                        _read_int64(txn_file, offset=partition_offset + 8),
+                        _read_int64(txn_file, offset=partition_offset + 16),
+                        _read_int64(txn_file, offset=partition_offset + 24)))
 
-    @property
-    def partitions_count(self):
-        return int(self.partition_table_size / 4)
-
-    @property
     def partition_size(self, partition_index: int) -> int:
         return self.partitions[partition_index].p_size
 
@@ -261,7 +311,6 @@ class TableInfo:
     def __init__(self, table_name: str):
         self.metadata = Metadata(table_name)
         self.transaction = Transaction(table_name)
-        self.partitions_root_path = _table_data_root(table_name)
 
     @property
     def row_count(self):
@@ -276,29 +325,29 @@ class TableInfo:
             return self.metadata.column_names[col_idx]
         return None
 
+    def column_type_id(self, col_idx: int) -> str:
+        if 0 <= col_idx < self.column_count:
+            return self.metadata.column_types[col_idx].type_id
+        return None
+
     def column_storage_size(self, col_idx: int) -> str:
         if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].storage_size
+            return self.metadata.column_types[col_idx].type_storage_size
         return None
 
     def column_dtype(self, col_idx: int) -> str:
         if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].col_dtype
-        return None
-
-    def column_type(self, col_idx: int) -> str:
-        if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].col_id
+            return self.metadata.column_types[col_idx].dtype
         return None
 
     def column_type_flags(self, col_idx: int) -> str:
         if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].col_flags
+            return self.metadata.column_types[col_idx].type_flags
         return None
 
     def column_type_idx_block_size(self, col_idx: int) -> str:
         if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].col_idx_block_size
+            return self.metadata.column_types[col_idx].type_idx_block_size
         return None
 
     @property
@@ -306,7 +355,7 @@ class TableInfo:
         return self.metadata.timestamp_idx
 
     def is_partitioned(self) -> bool:
-        return self.metadata.partition_by != PARTITION_BY_NONE
+        return self.metadata.partition_by != PartitionBy.NONE
 
     @property
     def partition_by(self) -> int:
@@ -320,7 +369,7 @@ class TableInfo:
         if 0 <= p_id < self.partitions_count:
             partition = self.transaction.partitions[p_id]
             p_folder = self._partition_folder(partition.p_timestamp, partition.p_name_tx)
-            if self.partition_by == PARTITION_BY_NONE:
+            if self.partition_by == PartitionBy.NONE:
                 row_count = self.transaction.row_count
             elif p_id + 1 < self.partitions_count:
                 row_count = partition.p_size
@@ -330,17 +379,17 @@ class TableInfo:
         return None, None
 
     def _partition_folder(self, date_micros: int, tx_name: int) -> Path:
-        if self.partition_by == PARTITION_BY_DAY:
+        if self.partition_by == PartitionBy.DAY:
             folder_name = from_timestamp(date_micros, '%Y-%m-%d')
-        elif self.partition_by == PARTITION_BY_MONTH:
+        elif self.partition_by == PartitionBy.MONTH:
             folder_name = from_timestamp(date_micros, '%Y-%m')
-        elif self.partition_by == PARTITION_BY_YEAR:
+        elif self.partition_by == PartitionBy.YEAR:
             folder_name = from_timestamp(date_micros, '%Y')
-        elif self.partition_by == PARTITION_BY_NONE:
+        elif self.partition_by == PartitionBy.NONE:
             folder_name = 'default'
-        if self.partition_by != PARTITION_BY_NONE and tx_name == 0:
-            folder_name += '.0'
-        return self.partitions_root_path / folder_name
+        if self.partition_by != PartitionBy.NONE and tx_name != -1:
+            folder_name += f'.{tx_name}'
+        return self.transaction.root_path / folder_name
 
 
 def _table_data_root(table_name: str) -> Path:
@@ -351,9 +400,14 @@ def _table_data_root(table_name: str) -> Path:
     return None
 
 
-def _read_int32(meta_file: typing.BinaryIO):
-    return int.from_bytes(meta_file.read(4), byteorder=sys.byteorder)
+def _read_int32(meta_file: typing.BinaryIO, offset: int) -> int:
+    return _read_int(meta_file, offset, 4)
 
 
-def _read_int64(meta_file: typing.BinaryIO):
-    return int.from_bytes(meta_file.read(8), byteorder=sys.byteorder)
+def _read_int64(meta_file: typing.BinaryIO, offset: int) -> int:
+    return _read_int(meta_file, offset, 8)
+
+
+def _read_int(meta_file: typing.BinaryIO, offset: int, num_bytes: int) -> int:
+    meta_file.seek(offset)
+    return int.from_bytes(meta_file.read(num_bytes), byteorder=sys.byteorder)

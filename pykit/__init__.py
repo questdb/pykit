@@ -27,21 +27,14 @@ from pykit.core import (
     QDB_DB_ROOT,
     QDB_DB_CONF,
     QDB_CLONE_FOLDER,
-    Metadata,
-    TypeMetadata,
-    Transaction,
-    Partition
-)
-
-from pykit.types import (
-    COLUMN_TYPES,
-    PARTITION_BY,
-    PARTITION_BY_DAY,
-    PARTITION_BY_MONTH,
-    PARTITION_BY_YEAR,
-    PARTITION_BY_NONE,
+    TableInfo,
+    ColumnTypes,
     ColumnType,
-    PartitionBy
+    TypeMetadata,
+    Metadata,
+    Transaction,
+    PartitionBy,
+    Partition
 )
 
 from pykit.ts import (
@@ -52,15 +45,15 @@ from pykit.ts import (
 )
 
 from pykit.pgwire import (
+    Cursor,
+    CursorConsumer,
+    with_cursor,
+    create_table,
     insert_values,
     select_all,
-    create_table,
     drop_table,
     drop_tables,
-    report_version,
-    with_cursor,
-    Cursor,
-    CursorConsumer
+    report_version
 )
 
 from pykit.ilp import (
