@@ -34,7 +34,8 @@ from pykit.core import (
     Metadata,
     Transaction,
     PartitionBy,
-    Partition
+    Partition,
+    NPArray
 )
 
 from pykit.ts import (

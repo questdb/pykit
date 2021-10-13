@@ -123,15 +123,23 @@ def is_qdb_jar(file_name: str) -> bool:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='QuestDB developer tools')
+    parser = argparse.ArgumentParser(description='Pykit module commands on QuestDB\'s local node')
     subparsers = parser.add_subparsers(dest='command')
-    update_parser = subparsers.add_parser('update', help='Updates local QuestDB\'s clone and builds it')
-    update_parser.add_argument('--force', default=False, type=bool)
-    start_parser = subparsers.add_parser('start', help='Starts QuestDB')
+    start_parser = subparsers.add_parser(
+        'start',
+        help='Starts QuestDB (building a clone in the process if none exists)')
+    update_parser = subparsers.add_parser(
+        'update',
+        help='Updates local QuestDB\'s clone and builds it (--force True to override exiting clone)')
+    update_parser.add_argument(
+        '--force',
+        default=False,
+        type=bool,
+        help='FORCE True to override exiting clone')
     args = parser.parse_args()
     if args.command is None:
         parser.print_help()
-    elif args.command == 'update':
-        _update_command(args.force)
     elif args.command == 'start':
         _start_command()
+    elif args.command == 'update':
+        _update_command(args.force)

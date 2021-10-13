@@ -21,18 +21,19 @@
 #  limitations under the License.
 #
 
-import numpy as np
 import mmap
 import typing
 import pandas as pd
 from pandas.core.internals import (BlockManager, make_block)
 from pandas.core.indexes.base import Index
-from pykit.core import TableInfo
+from pykit.core import (TableInfo, NPArray)
 
 NOT_STORED_ANONYMOUS_MEMORY = -1
 
 
-def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]) -> pd.DataFrame:
+def df_from_table(table_name: str,
+                  columns: typing.Tuple[typing.Tuple[str, str]],
+                  usr_index: pd.Index = None) -> pd.DataFrame:
     table_info = TableInfo(table_name)
     df_column_names = []
     df_column_np_arrays = []
@@ -65,7 +66,7 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
                 col_type=table_info.column_type_id(col_idx),
                 col_dtype=table_info.column_dtype(col_idx),
                 col_mmap=col_mmap)
-            if table_info.ts_idx == col_idx:
+            if table_info.ts_idx == col_idx and usr_index is None:
                 index = Index(
                     data=col_np_array,
                     name=col_name,
@@ -75,11 +76,14 @@ def df_from_table(table_name: str, columns: typing.Tuple[typing.Tuple[str, str]]
                 df_column_names.append(col_name)
                 df_column_np_arrays.append(col_np_array)
     if table_info.ts_idx is None:
-        index = pd.RangeIndex(
-            name='Idx',
-            start=0,
-            stop=table_info.row_count,
-            step=1)
+        if usr_index is None:
+            index = pd.RangeIndex(
+                name='Idx',
+                start=0,
+                stop=table_info.row_count,
+                step=1)
+        else:
+            index = usr_index
     df_blocks = tuple(make_block(
         values=column.reshape((1, len(column))),
         placement=(position,)
@@ -110,36 +114,3 @@ def _validate_column(target_col_name: str, *columns: typing.Tuple[str, str]) -> 
         if col_name == target_col_name:
             return True
     return False
-
-
-class NPArray(np.ndarray):
-    def __new__(cls,
-                col_file: str,
-                row_count: int,
-                col_type: int,
-                col_dtype: np.dtype,
-                col_mmap: mmap.mmap):
-        col_np_array = np.ndarray.__new__(
-            NPArray,
-            shape=(row_count,),
-            dtype=col_dtype,
-            buffer=col_mmap,
-            offset=0,
-            order='C')
-        col_np_array.filename = col_file
-        col_np_array.mode = 'rb'
-        col_np_array.flags['WRITEABLE'] = False
-        col_np_array.flags['ALIGNED'] = True
-        col_np_array._mmap = col_mmap
-        return col_np_array
-
-    # def __getitem__(self, idx):
-    #     col_type = self.dtype.metadata['type_id']
-    #     value = super().__getitem__(idx)
-    #     print(f'VALUE.class: {value.__class__}, idx: {idx} (idx.class: {idx.__class__})')
-    #     if not isinstance(value, NPArray):
-    #         if col_type == 5 and value == -2147483648:
-    #             return 0
-    #         if 6 <= col_type <= 8 and value == -9223372036854775808:
-    #             return 0
-    #     return value
