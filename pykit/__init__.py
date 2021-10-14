@@ -28,13 +28,16 @@ from pykit.core import (
     QDB_DB_CONF,
     QDB_CLONE_FOLDER,
     TableInfo,
-    ColumnTypes,
-    ColumnType,
     TypeMetadata,
     Metadata,
     Transaction,
     PartitionBy,
-    Partition,
+    Partition
+)
+
+from pykit.types import (
+    ColumnTypes,
+    ColumnType,
     NPArray
 )
 

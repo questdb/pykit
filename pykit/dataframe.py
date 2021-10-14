@@ -26,7 +26,8 @@ import typing
 import pandas as pd
 from pandas.core.internals import (BlockManager, make_block)
 from pandas.core.indexes.base import Index
-from pykit.core import (TableInfo, NPArray)
+from pykit.core import TableInfo
+from pykit.types import NPArray
 
 NOT_STORED_ANONYMOUS_MEMORY = -1
 
@@ -40,9 +41,10 @@ def df_from_table(table_name: str,
     for col_idx in range(table_info.column_count):
         col_name = table_info.column_name(col_idx)
         if _validate_column(col_name, *columns):
+            type_storage_size = table_info.column_type(col_idx).type_storage_size
             col_mmap = mmap.mmap(
                 NOT_STORED_ANONYMOUS_MEMORY,
-                length=table_info.row_count * table_info.column_storage_size(col_idx),
+                length=table_info.row_count * type_storage_size,
                 flags=mmap.MAP_SHARED,
                 access=mmap.ACCESS_WRITE,
                 offset=0)
@@ -50,7 +52,7 @@ def df_from_table(table_name: str,
             for p_id in range(table_info.partitions_count):
                 p_folder, p_row_count = table_info.partition_info(p_id)
                 with open(p_folder / f'{col_name}.d', 'rb') as p_file:
-                    p_storage_size = p_row_count * table_info.column_storage_size(col_idx)
+                    p_storage_size = p_row_count * type_storage_size
                     p_mmap = mmap.mmap(
                         p_file.fileno(),
                         length=p_storage_size,
@@ -63,8 +65,7 @@ def df_from_table(table_name: str,
             col_np_array = NPArray(
                 col_file=p_file.name,
                 row_count=table_info.row_count,
-                col_type=table_info.column_type_id(col_idx),
-                col_dtype=table_info.column_dtype(col_idx),
+                col_type=table_info.column_type(col_idx),
                 col_mmap=col_mmap)
             if table_info.ts_idx == col_idx and usr_index is None:
                 index = Index(

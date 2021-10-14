@@ -22,16 +22,15 @@
 #
 
 from enum import Enum
-import mmap
-import numpy as np
-import pandas as pd
 import os
 from pathlib import Path
 import sys
 import typing
 
-from pandas._libs.hashtable import object_hash
-from pandas.core.dtypes.base import ExtensionDtype
+from pykit.types import (
+    ColumnTypes,
+    ColumnType
+)
 from pykit.ts import (
     from_date,
     from_timestamp
@@ -53,140 +52,6 @@ QDB_DB_CONF = QDB_DB_ROOT / 'conf'
 
 # Git clone, automatically checked out on server start, or on module command 'update'
 QDB_CLONE_FOLDER = QDB_HOME / 'clone'
-
-
-@pd.api.extensions.register_extension_dtype
-class ColumnType(ExtensionDtype):
-
-    def __init__(self,
-                 dtype: type[np.generic],
-                 metadata: typing.Dict[str, typing.Any]):
-        self._dtype = np.dtype(dtype, metadata=metadata)
-
-    @property
-    def name(self) -> str:
-        return self.type_name()
-
-    @property
-    def type(self) -> type[np.generic]:
-        return self._dtype
-
-    @property
-    def kind(self) -> str:
-        return self._dtype.metadata['kind']
-
-    @property
-    def _is_numeric(self) -> bool:
-        return self.kind in ('i', 'f', 'M', 'm')
-
-    @property
-    def _is_boolean(self) -> bool:
-        return self.kind == 'b'
-
-    @classmethod
-    def construct_array_type(cls):
-        return NPArray
-
-    @classmethod
-    def construct_from_string(cls, string: str) -> ExtensionDtype:
-        return super().construct_from_string(string)
-
-    @property
-    def type_id(self) -> int:
-        return self._dtype.metadata['id']
-
-    @property
-    def type_name(self) -> str:
-        return self._dtype.metadata['name']
-
-    @property
-    def type_storage_size(self) -> int:
-        return self._dtype.metadata['storage_size']
-
-    def __hash__(self) -> int:
-        return object_hash(tuple(getattr(self, attr) for attr in self._metadata))
-
-    def __eq__(self, other: np.dtype) -> bool:
-        return all(getattr(self, attr) == getattr(other, attr) for attr in self._metadata)
-
-    def __str__(self):
-        return f'{self.type_name}({self.type_id}, metadata:{self.metadata})'
-
-
-class ColumnTypes:
-    UNDEFINED = ColumnType(np.void, metadata={'id': 0, 'kind': 'V', 'name': 'UNDEFINED', 'storage_size': 0})
-    BOOLEAN = ColumnType(bool, metadata={'id': 1, 'kind': 'b', 'name': 'BOOLEAN', 'storage_size': 1})
-    BYTE = ColumnType(np.int8, metadata={'id': 2, 'kind': 'i', 'name': 'BYTE', 'storage_size': 1})
-    SHORT = ColumnType(np.int16, metadata={'id': 3, 'kind': 'i', 'name': 'SHORT', 'storage_size': 2})
-    CHAR = ColumnType(np.int16, metadata={'id': 4, 'kind': 'i', 'name': 'CHAR', 'storage_size': 2})
-    INT = ColumnType(np.int32, metadata={'id': 5, 'kind': 'i', 'name': 'INT', 'storage_size': 4})
-    LONG = ColumnType(np.int64, metadata={'id': 6, 'kind': 'i', 'name': 'LONG', 'storage_size': 8})
-    DATE = ColumnType(np.int64, metadata={'id': 7, 'kind': 'i', 'name': 'DATE', 'storage_size': 8})
-    TIMESTAMP = ColumnType(np.int64, metadata={'id': 8, 'kind': 'i', 'name': 'TIMESTAMP', 'storage_size': 8})
-    FLOAT = ColumnType(np.float32, metadata={'id': 9, 'kind': 'f', 'name': 'FLOAT', 'storage_size': 4})
-    DOUBLE = ColumnType(np.float64, metadata={'id': 10, 'kind': 'f', 'name': 'DOUBLE', 'storage_size': 8})
-    STRING = ColumnType(np.unicode_, metadata={'id': 11, 'kind': 'U', 'name': 'STRING', 'storage_size': 2})
-    SYMBOL = ColumnType(bool, metadata={'id': 12, 'kind': 'b', 'name': 'SYMBOL', 'storage_size': 2})
-    LONG256 = ColumnType(bool, metadata={'id': 13, 'kind': 'b', 'name': 'LONG256', 'storage_size': 2})
-    GEOBYTE = ColumnType(np.int8, metadata={'id': 14, 'kind': 'i', 'name': 'GEOBYTE', 'storage_size': 1})
-    GEOSHORT = ColumnType(np.int16, metadata={'id': 15, 'kind': 'i', 'name': 'GEOSHORT', 'storage_size': 2})
-    GEOINT = ColumnType(np.int32, metadata={'id': 16, 'kind': 'i', 'name': 'GEOINT', 'storage_size': 4})
-    GEOLONG = ColumnType(np.int64, metadata={'id': 17, 'kind': 'i', 'name': 'GEOLONG', 'storage_size': 8})
-    BINARY = ColumnType(np.ubyte, metadata={'id': 18, 'kind': 'b', 'name': 'BINARY', 'storage_size': 1})
-    PARAMETER = ColumnType(bool, metadata={'id': 19, 'kind': 'b', 'name': 'PARAMETER', 'storage_size': 0})
-    CURSOR = ColumnType(bool, metadata={'id': 20, 'kind': 'b', 'name': 'CURSOR', 'storage_size': 0})
-    VAR_ARG = ColumnType(bool, metadata={'id': 21, 'kind': 'b', 'name': 'VAR_ARG', 'storage_size': 0})
-    RECORD = ColumnType(bool, metadata={'id': 22, 'kind': 'b', 'name': 'RECORD', 'storage_size': 0})
-    GEOHASH = ColumnType(bool, metadata={'id': 23, 'kind': 'b', 'name': 'GEOHASH', 'storage_size': 0})
-    NULL = ColumnType(np.void, metadata={'id': 24, 'kind': 'V', 'name': 'NULL', 'storage_size': 0})
-
-    __values = (  # leave them in this order
-        UNDEFINED, BOOLEAN, BYTE, SHORT, CHAR, INT,
-        LONG, DATE, TIMESTAMP, FLOAT, DOUBLE, STRING,
-        SYMBOL, LONG256, GEOBYTE, GEOSHORT, GEOINT, GEOLONG,
-        BINARY, PARAMETER, CURSOR, VAR_ARG, RECORD, GEOHASH,
-        NULL
-    )
-
-    @staticmethod
-    def resolve(type_id: int) -> ColumnType:
-        for col_type in ColumnTypes.__values:
-            if type_id == col_type.type_id:
-                return col_type
-        return ColumnType.UNDEFINED
-
-
-class NPArray(np.ndarray):
-    def __new__(cls,
-                col_file: str,
-                row_count: int,
-                col_type: int,
-                col_dtype: np.dtype,
-                col_mmap: mmap.mmap):
-        col_np_array = np.ndarray.__new__(
-            NPArray,
-            shape=(row_count,),
-            dtype=col_dtype,
-            buffer=col_mmap,
-            offset=0,
-            order='C')
-        col_np_array.filename = col_file
-        col_np_array.mode = 'rb'
-        col_np_array.flags['WRITEABLE'] = False
-        col_np_array.flags['ALIGNED'] = True
-        col_np_array._mmap = col_mmap
-        return col_np_array
-
-    # def __getitem__(self, *args):
-    #     col_type = self.dtype.metadata['type_id']
-    #     value = operator.getitem(self.data, *args)
-    #     print(f'{col_type}: {value}, VALUE.class: {value.__class__}, idx: {args}')
-    #     # if not isinstance(value, NPArray):
-    #     #     if col_type == 5 and value == -2147483648:
-    #     #         return 0
-    #     #     if 6 <= col_type <= 8 and value == -9223372036854775808:
-    #     #         return 0
-    #     return value
 
 
 class PartitionBy(Enum):
@@ -399,29 +264,9 @@ class TableInfo:
             return self.metadata.column_names[col_idx]
         return None
 
-    def column_type_id(self, col_idx: int) -> str:
+    def column_type(self, col_idx: int) -> str:
         if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].type_id
-        return None
-
-    def column_storage_size(self, col_idx: int) -> str:
-        if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].type_storage_size
-        return None
-
-    def column_dtype(self, col_idx: int) -> np.dtype:
-        if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].type
-        return None
-
-    def column_type_flags(self, col_idx: int) -> str:
-        if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].type_flags
-        return None
-
-    def column_type_idx_block_size(self, col_idx: int) -> str:
-        if 0 <= col_idx < self.column_count:
-            return self.metadata.column_types[col_idx].type_idx_block_size
+            return self.metadata.column_types[col_idx]
         return None
 
     @property

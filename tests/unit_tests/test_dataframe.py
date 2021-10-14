@@ -101,6 +101,8 @@ class DataFrameFromTablesTest(BaseTestTest):
                 '(6, 0.7071067811865475, datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))' + os.linesep)
             snapshot_before_df = self.take_mem_snapshot()
             df = df_from_table(table_name, columns)
+            pd.set_option('display.width', 800)
+            pd.set_option('max_columns', 4)
             self.assertEqual(
                 '                  int    double' + os.linesep +
                 'ts                             ' + os.linesep +
@@ -150,6 +152,8 @@ class DataFrameFromTablesTest(BaseTestTest):
                 '(5, 1.4142135623730951, datetime.datetime(2021, 10, 3, 2, 5, 0, 123456))' + os.linesep)
             snapshot_before_df = self.take_mem_snapshot()
             df = df_from_table(table_name, columns)
+            pd.set_option('display.width', 800)
+            pd.set_option('max_columns', 4)
             self.assertEqual(
                 '                  int    double' + os.linesep +
                 'ts                             ' + os.linesep +
@@ -199,6 +203,8 @@ class DataFrameFromTablesTest(BaseTestTest):
                 '(6, 0.7071067811865475, datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))' + os.linesep)
             snapshot_before_df = self.take_mem_snapshot()
             df = df_from_table(table_name, columns)
+            pd.set_option('display.width', 800)
+            pd.set_option('max_columns', 4)
             self.assertEqual(
                 '     int    double                ts' + os.linesep +
                 'Idx                                 ' + os.linesep +
@@ -250,6 +256,8 @@ class DataFrameFromTablesTest(BaseTestTest):
             df = df_from_table(table_name,
                                columns,
                                usr_index=pd.RangeIndex(start=0, stop=14, step=2, dtype=np.int32, name='Idx'))
+            pd.set_option('display.width', 800)
+            pd.set_option('max_columns', 4)
             self.assertEqual(
                 '     int    double                ts' + os.linesep +
                 'Idx                                 ' + os.linesep +
@@ -301,34 +309,34 @@ class DataFrameFromTablesTest(BaseTestTest):
                 to_timestamp('2021-10-01 02:00:00.123456'),
                 to_timestamp('2021-10-03 02:06:00.123456')], dtype=np.int64))
         print()
-        # print(pdf.loc[to_timestamp('2021-10-01 02:00:00.123456')]['string'])
-        # print(np.ndarray(pdf[to_timestamp('2021-10-01 02:00:00.123456')], dtype=np.chararray))
-        rec = pdf.to_records(index=False)
-        print(rec.tobytes(order='C'))
-        print(repr(rec))
+        recs = pdf.to_records(index=False)
+        rec0 = recs[0]
+        print(rec0.tobytes(order='C'))
+        print(repr(rec0))
 
-        # table_name = 'test_string_type'
-        # columns = (
-        #     ('string', 'STRING'),
-        #     ('ts', 'TIMESTAMP'))
-        # drop_table(table_name)
-        # try:
-        #     create_table(table_name, columns, designated='ts', partition_by='DAY')
-        #     insert_values(
-        #         table_name,
-        #         columns,
-        #         ('QuestDB', to_timestamp('2021-10-01 02:00:00.123456')),
-        #         ('pykit', to_timestamp('2021-10-03 02:06:00.123456'))
-        #     )
-        #     self.assert_table_content(
-        #         table_name,
-        #         "('QuestDB', datetime.datetime(2021, 10, 1, 2, 0, 0, 123456))" + os.linesep +
-        #         "('pykit', datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))" + os.linesep)
-        #     df = df_from_table(table_name, columns)
-        #     pd.set_option('display.width', 800)
-        #     pd.set_option('max_columns', len(columns))
-        #     print()
-        #     print(df)
-        #     print(df.loc[to_timestamp('2021-10-01 02:00:00.123456')]['string'])
-        # finally:
-        #     drop_table(table_name)
+        # TODO: 2 bytes per char UTF-16 no \0 terminated
+        table_name = 'test_string_type'
+        columns = (
+            ('string', 'STRING'),
+            ('ts', 'TIMESTAMP'))
+        drop_table(table_name)
+        try:
+            create_table(table_name, columns, designated='ts', partition_by='DAY')
+            insert_values(
+                table_name,
+                columns,
+                ('QuestDB', to_timestamp('2021-10-01 02:00:00.123456')),
+                ('pykit', to_timestamp('2021-10-03 02:06:00.123456'))
+            )
+            self.assert_table_content(
+                table_name,
+                "('QuestDB', datetime.datetime(2021, 10, 1, 2, 0, 0, 123456))" + os.linesep +
+                "('pykit', datetime.datetime(2021, 10, 3, 2, 6, 0, 123456))" + os.linesep)
+            df = df_from_table(table_name, columns)
+            pd.set_option('display.width', 800)
+            pd.set_option('max_columns', len(columns))
+            print()
+            print(df)
+            print(df.loc[to_timestamp('2021-10-01 02:00:00.123456')]['string'])
+        finally:
+            drop_table(table_name)
