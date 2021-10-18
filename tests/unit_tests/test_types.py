@@ -49,11 +49,10 @@ class TypesTest(BaseTestTest):
 
     def _test_type(self, series_type: ColumnType, values: typing.List[typing.Any]):
         series = pd.Series(data=values, dtype=series_type)
-
         series_bytes = series.values.tobytes('C')
         total_bytes = len(series_bytes)
         num_values = len(series)
-        # self.assertEqual(6, num_values)
+        self.assertEqual(6, num_values)
         self.assertEqual(total_bytes, num_values * series_type.type_storage_size)
         print(f'{series_type.type_name}({series_type.type_storage_size}b)*{num_values}: {series_bytes}')
         for i in range(0, total_bytes, series_type.type_storage_size):

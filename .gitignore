@@ -5,4 +5,5 @@ pykit.egg-info/
 .pytest_cache
 .idea/
 questdb.log
-
+*.npy
+*.bin

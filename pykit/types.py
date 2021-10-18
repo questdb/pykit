@@ -92,13 +92,14 @@ class ColumnTypes:
     BOOLEAN = ColumnType(bool, {'id': 1, 'kind': 'b', 'name': 'BOOLEAN', 'storage': 1, 'null': False})
 
     # Numeric
-    BYTE = ColumnType(np.int8, {'id': 2, 'kind': 'i', 'name': 'BYTE', 'storage': 1, 'null': None})
+    BYTE = ColumnType(np.uint8, {'id': 2, 'kind': 'B', 'name': 'BYTE', 'storage': 1, 'null': None})
 
     SHORT = ColumnType(np.int16, {'id': 3, 'kind': 'i', 'name': 'SHORT', 'storage': 2, 'null': None})
     INT = ColumnType(np.int32, {'id': 5, 'kind': 'i', 'name': 'INT', 'storage': 4, 'null': 0x80000000})
     LONG = ColumnType(np.int64, {'id': 6, 'kind': 'i', 'name': 'LONG', 'storage': 8, 'null': 0x8000000000000000})
     DATE = ColumnType(np.int64, {'id': 7, 'kind': 'i', 'name': 'DATE', 'storage': 8, 'null': 0x8000000000000000})
-    TIMESTAMP = ColumnType(np.int64, {'id': 8, 'kind': 'i', 'name': 'TIMESTAMP', 'storage': 8, 'null': 0x8000000000000000})
+    TIMESTAMP = ColumnType(np.int64,
+                           {'id': 8, 'kind': 'i', 'name': 'TIMESTAMP', 'storage': 8, 'null': 0x8000000000000000})
     FLOAT = ColumnType(np.float32, {'id': 9, 'kind': 'f', 'name': 'FLOAT', 'storage': 4, 'null': None})
     DOUBLE = ColumnType(np.float64, {'id': 10, 'kind': 'f', 'name': 'DOUBLE', 'storage': 8, 'null': None})
     GEOBYTE = ColumnType(np.int8, {'id': 14, 'kind': 'i', 'name': 'GEOBYTE', 'storage': 1, 'null': -1})
@@ -109,16 +110,16 @@ class ColumnTypes:
     # UTF-6 based, len prefix no \0 terminated
     CHAR = ColumnType(np.int16, {'id': 4, 'kind': 'i', 'name': 'CHAR', 'storage': 1, 'null': None})
     STRING = ColumnType(np.unicode_, {'id': 11, 'kind': 'U', 'name': 'STRING', 'storage': 2, 'null': None})
-    SYMBOL = ColumnType(bool, {'id': 12, 'kind': 'b', 'name': 'SYMBOL', 'storage': 2, 'null': None})
-    LONG256 = ColumnType(bool, {'id': 13, 'kind': 'b', 'name': 'LONG256', 'storage': 2, 'null': None})
+    SYMBOL = ColumnType(np.unicode_, {'id': 12, 'kind': 'U', 'name': 'SYMBOL', 'storage': 2, 'null': None})
+    LONG256 = ColumnType(np.unicode_, {'id': 13, 'kind': 'U', 'name': 'LONG256', 'storage': 2, 'null': None})
 
     # not used by pykit
-    BINARY = ColumnType(np.ubyte, {'id': 18, 'kind': 'b', 'name': 'BINARY', 'storage': 1, 'null': None})
-    PARAMETER = ColumnType(bool, {'id': 19, 'kind': 'b', 'name': 'PARAMETER', 'storage': 0, 'null': None})
-    CURSOR = ColumnType(bool, {'id': 20, 'kind': 'b', 'name': 'CURSOR', 'storage': 0, 'null': None})
-    VAR_ARG = ColumnType(bool, {'id': 21, 'kind': 'b', 'name': 'VAR_ARG', 'storage': 0, 'null': None})
-    RECORD = ColumnType(bool, {'id': 22, 'kind': 'b', 'name': 'RECORD', 'storage': 0, 'null': None})
-    GEOHASH = ColumnType(bool, {'id': 23, 'kind': 'b', 'name': 'GEOHASH', 'storage': 8, 'null': None})
+    BINARY = ColumnType(np.ubyte, {'id': 18, 'kind': 'V', 'name': 'BINARY', 'storage': 1, 'null': None})
+    PARAMETER = ColumnType(np.void, {'id': 19, 'kind': 'V', 'name': 'PARAMETER', 'storage': 0, 'null': None})
+    CURSOR = ColumnType(np.void, {'id': 20, 'kind': 'V', 'name': 'CURSOR', 'storage': 0, 'null': None})
+    VAR_ARG = ColumnType(np.void, {'id': 21, 'kind': 'V', 'name': 'VAR_ARG', 'storage': 0, 'null': None})
+    RECORD = ColumnType(np.void, {'id': 22, 'kind': 'V', 'name': 'RECORD', 'storage': 0, 'null': None})
+    GEOHASH = ColumnType(np.int64, {'id': 23, 'kind': 'i', 'name': 'GEOHASH', 'storage': 8, 'null': None})
 
     __values = (  # leave them in this order
         UNDEFINED, BOOLEAN, BYTE, SHORT, CHAR, INT,
@@ -166,20 +167,3 @@ class NPArray(np.ndarray):
     @classmethod
     def _from_sequence(cls, scalars: typing.List[typing.Any], dtype: ColumnType, copy: bool = False):
         return NPArray(None, None, dtype, scalars)
-
-    # def to_records(
-    #         self, index=True, column_dtypes=None, index_dtypes=None
-    # ) -> np.recarray:
-    #     print("SAPUUUO")
-    #     return super().to_records(index, column_dtypes, index_dtypes)
-
-    # def __getitem__(self, *args):
-    #     col_type = self.dtype.metadata['type_id']
-    #     value = operator.getitem(self.data, *args)
-    #     print(f'{col_type}: {value}, VALUE.class: {value.__class__}, idx: {args}')
-    #     # if not isinstance(value, NPArray):
-    #     #     if col_type == 5 and value == -2147483648:
-    #     #         return 0
-    #     #     if 6 <= col_type <= 8 and value == -9223372036854775808:
-    #     #         return 0
-    #     return value
