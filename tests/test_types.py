@@ -31,13 +31,14 @@ from pykit import (
     ColumnType
 )
 
-from tests.unit_tests.util import BaseTestTest
+from tests.util import BaseTestTest
 
 
 class TypesTest(BaseTestTest):
     def test_types(self):
         print()
         self._test_type(ColumnTypes.BOOLEAN, [True, np.nan, False, None, True, True]) # bool, cannot use pd.NA
+        # TODO: fix this
         # self._test_type(ColumnTypes.BYTE, [255, np.nan, 0, None, 128, pd.NA]) # Int8Dtype
         # self._test_type(ColumnTypes.SHORT, [10000, np.nan, 0, None, -128, pd.NA]) # Int16Dtype
         # self._test_type(ColumnTypes.INT, [314159, pd.NA, 0, None, 271828, pd.NA]) # Int32Dtype

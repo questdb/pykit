@@ -20,3 +20,34 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+
+import numpy as np
+from pathlib import Path
+
+import pandas as pd
+from tests.util import (BaseTestTest)
+
+from pykit import (
+    to_timestamp,
+)
+
+OUR_STRING = 'Miguel investigating 控网站漏洞风 and комитета'
+
+
+class ResearchQuestionsTest(BaseTestTest):
+
+    def test_string_type(self):
+        file_path = Path('resources') / 'string_type.feather'
+        df = pd.DataFrame(
+            {
+                'string': ['QuestDB', 'pykit', OUR_STRING]
+            },
+            index=np.asarray([
+                to_timestamp('2021-10-01 02:00:00.123456'),
+                to_timestamp('2021-10-02 02:02:00.123456'),
+                to_timestamp('2021-10-03 02:04:00.123456')], dtype=np.int64))
+        print(df.dtypes)
+
+
+
+

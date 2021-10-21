@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import struct
-from tests.unit_tests.util import (BaseTestTest, dataframe)
+from tests.util import (BaseTestTest, dataframe)
 
 
 # https://github.com/numpy/numpy/issues/14821

@@ -23,36 +23,36 @@
 
 import argparse
 import os
+import shutil
+import subprocess
+import sys
 import zipfile
 from pathlib import Path
-import subprocess
-import shutil
-import sys
 
 from pykit.core import (QDB_HOME, QDB_DB_ROOT, QDB_DB_CONF, QDB_CLONE_FOLDER)
 
 
-def _update_command(force: bool = False):
+def _update_command(branch_name: str, force: bool):
     if not QDB_HOME.exists():
         QDB_HOME.mkdir()
-        print(f'Created QuestDB\'s home: {QDB_HOME}')
+        print(f'Created home: {QDB_HOME}')
     if not QDB_DB_ROOT.exists():
         QDB_DB_ROOT.mkdir()
-        print(f'Created QuestDB\'s data ROOT dir: {QDB_DB_ROOT}')
+        print(f'Created data root: {QDB_DB_ROOT}')
     if force and QDB_CLONE_FOLDER.exists():
         try:
             shutil.rmtree(QDB_CLONE_FOLDER)
-            print('Deleted QuestDB\'s clone')
+            print('Deleted clone')
         except OSError as e:
-            print(f'Error deleting QuestDB\'s clone: {e.filename} - {e.strerror}.')
+            print(f'Error deleting clone: {e.filename} - {e.strerror}.')
             sys.exit(1)
     if not QDB_CLONE_FOLDER.exists():
-        print('Cloning QuestDB')
-        subprocess.check_output(['git', 'clone', 'git@github.com:questdb/questdb.git', 'clone'], cwd=QDB_HOME)
+        subprocess.check_output(
+            ['git', 'clone', '-b', branch_name, 'git@github.com:questdb/questdb.git', 'clone'],
+            cwd=QDB_HOME)
     else:
-        print('Updating QuestDB\'s clone')
+        subprocess.check_output(['git', 'checkout', branch_name], cwd=QDB_CLONE_FOLDER)
         subprocess.check_output(['git', 'pull'], cwd=QDB_CLONE_FOLDER)
-    print("Building QuestDB\'s clone")
     subprocess.check_output(['mvn', 'clean', 'install', '-DskipTests'], cwd=QDB_CLONE_FOLDER)
     print('Update completed')
 
@@ -60,10 +60,8 @@ def _update_command(force: bool = False):
 def _start_command():
     qdb_jar = _find_jar()
     if not qdb_jar:
-        print('QuestDB\'s jar not found, updating')
-        _update_command(force=False)
-        qdb_jar = _find_jar()
-    print(f'QuestDB\'s jar: {qdb_jar}')
+        print(f'QuestDB jar not found, try updating first.')
+        sys.exit(1)
     _ensure_conf_exists()
     try:
         comand = [
@@ -94,14 +92,14 @@ def _start_command():
 
 def _ensure_conf_exists() -> None:
     if not QDB_DB_CONF.exists():
-        print('QuestDB\'s conf folder not found')
+        print('QuestDB conf folder not found')
         import pykit
 
         src_file = Path(pykit.__file__).parent / 'resources' / 'conf.zip'
         with zipfile.ZipFile(src_file, 'r') as zip_ref:
             for file in zip_ref.namelist():
                 zip_ref.extract(member=file, path=QDB_DB_ROOT)
-            print(f'Created default QuestDB conf: {QDB_DB_CONF}')
+            print(f'Created default conf: {QDB_DB_CONF}')
 
 
 def _find_jar() -> Path:
@@ -122,24 +120,30 @@ def is_qdb_jar(file_name: str) -> bool:
     return file_name.endswith('.jar') and file_name.startswith('questdb-') and '-tests' not in file_name
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Pykit module commands on QuestDB\'s local node')
-    subparsers = parser.add_subparsers(dest='command')
-    start_parser = subparsers.add_parser(
-        'start',
-        help='Starts QuestDB (building a clone in the process if none exists)')
-    update_parser = subparsers.add_parser(
-        'update',
-        help='Updates local QuestDB\'s clone and builds it (--force True to override exiting clone)')
-    update_parser.add_argument(
+def _args_parser() -> argparse.ArgumentParser:
+    args_parser = argparse.ArgumentParser(description='Pykit commands to run QuestDB')
+    command = args_parser.add_subparsers(dest='command')
+    command.add_parser('start', help='Starts QuestDB in localhost')
+    update = command.add_parser('update', help='Clones/builds QuestDB\'s github repo')
+    update.add_argument(
+        '--branch',
+        default=None,
+        type=str,
+        help='prepare a QuestDB node from the latest version of BRANCH (default master)')
+    update.add_argument(
         '--force',
         default=False,
         type=bool,
-        help='FORCE True to override exiting clone')
+        help='FORCE True to delete/clone/build QuestDB\'s github repo')
+    return args_parser
+
+
+if __name__ == '__main__':
+    parser = _args_parser()
     args = parser.parse_args()
     if args.command is None:
         parser.print_help()
     elif args.command == 'start':
         _start_command()
     elif args.command == 'update':
-        _update_command(args.force)
+        _update_command(args.branch, args.force)
