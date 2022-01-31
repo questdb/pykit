@@ -29,7 +29,7 @@ import sys
 import zipfile
 from pathlib import Path
 
-from pykit.core import (QDB_HOME, QDB_DB_ROOT, QDB_DB_CONF, QDB_CLONE_FOLDER)
+from pykit.core import (QDB_HOME, QDB_DB_ROOT, QDB_DB_CONF, QDB_DB_PUBLIC, QDB_CLONE_FOLDER)
 
 
 def _update_command(branch_name: str, force: bool):
@@ -53,7 +53,7 @@ def _update_command(branch_name: str, force: bool):
     else:
         subprocess.check_output(['git', 'checkout', branch_name], cwd=QDB_CLONE_FOLDER)
         subprocess.check_output(['git', 'pull'], cwd=QDB_CLONE_FOLDER)
-    subprocess.check_output(['mvn', 'clean', 'install', '-DskipTests'], cwd=QDB_CLONE_FOLDER)
+    subprocess.check_output(['mvn', 'clean', 'package', '-DskipTests'], cwd=QDB_CLONE_FOLDER)
     print('Update completed')
 
 
@@ -62,7 +62,15 @@ def _start_command():
     if not qdb_jar:
         print(f'QuestDB jar not found, try updating first.')
         sys.exit(1)
-    _ensure_conf_exists()
+    if not QDB_DB_ROOT.exists():
+        QDB_DB_ROOT.mkdir()
+        print(f'Created data root: {QDB_DB_ROOT}')
+    if not QDB_DB_CONF.exists():
+        QDB_DB_CONF.mkdir()
+        _extract_zip('conf.zip', QDB_DB_ROOT)
+    if not QDB_DB_PUBLIC.exists():
+        QDB_DB_PUBLIC.mkdir()
+        _extract_zip('public.zip', QDB_DB_PUBLIC)
     try:
         comand = [
             'java',
@@ -75,7 +83,8 @@ def _start_command():
             '-cp', f'{QDB_DB_CONF}:{qdb_jar}',
             'io.questdb.ServerMain',
             '-d', str(QDB_DB_ROOT),
-            '-n'  # disable handling of SIGHUP (close on terminal close)
+            '-n',  # disable handling of SIGHUP (close on terminal close)
+            '-f'
         ]
         with subprocess.Popen(comand,
                               stdout=subprocess.PIPE,
@@ -90,16 +99,13 @@ def _start_command():
         pass
 
 
-def _ensure_conf_exists() -> None:
-    if not QDB_DB_CONF.exists():
-        print('QuestDB conf folder not found')
-        import pykit
-
-        src_file = Path(pykit.__file__).parent / 'resources' / 'conf.zip'
-        with zipfile.ZipFile(src_file, 'r') as zip_ref:
-            for file in zip_ref.namelist():
-                zip_ref.extract(member=file, path=QDB_DB_ROOT)
-            print(f'Created default conf: {QDB_DB_CONF}')
+def _extract_zip(src_file_name, dst_folder) -> None:
+    import pykit
+    src_file = Path(pykit.__file__).parent / 'resources' / src_file_name
+    with zipfile.ZipFile(src_file, 'r') as zip_ref:
+        for file in zip_ref.namelist():
+            zip_ref.extract(member=file, path=dst_folder)
+        print(f'Extracted: {src_file_name} to {dst_folder}')
 
 
 def _find_jar() -> Path:
@@ -127,7 +133,7 @@ def _args_parser() -> argparse.ArgumentParser:
     update = command.add_parser('update', help='Clones/builds QuestDB\'s github repo')
     update.add_argument(
         '--branch',
-        default=None,
+        default='master',
         type=str,
         help='prepare a QuestDB node from the latest version of BRANCH (default master)')
     update.add_argument(

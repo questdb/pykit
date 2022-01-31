@@ -45,7 +45,8 @@ from pykit.ts import (
     to_timestamp,
     from_timestamp,
     to_date,
-    from_date
+    from_date,
+    now_utc
 )
 
 from pykit.pgwire import (

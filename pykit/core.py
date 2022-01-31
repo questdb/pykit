@@ -50,6 +50,9 @@ QDB_DB_DATA = QDB_DB_ROOT / 'db'
 # QuestBD's configuration folder, if not exists, create a default one
 QDB_DB_CONF = QDB_DB_ROOT / 'conf'
 
+# QuestBD's web site folder, if not exists, create a default one
+QDB_DB_PUBLIC = QDB_DB_ROOT / 'public'
+
 # Git clone, automatically checked out on server start, or on module command 'update'
 QDB_CLONE_FOLDER = QDB_HOME / 'clone'
 

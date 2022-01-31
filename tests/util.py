@@ -24,7 +24,6 @@
 import unittest
 import os
 import psycopg2
-from bitstring import BitArray
 import numpy as np
 import mmap
 from pathlib import Path

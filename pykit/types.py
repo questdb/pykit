@@ -134,7 +134,7 @@ class ColumnTypes:
         for col_type in ColumnTypes.__values:
             if type_id == col_type.type_id:
                 return col_type
-        return ColumnType.UNDEFINED
+        return ColumnTypes.UNDEFINED
 
 
 class NPArray(np.ndarray):

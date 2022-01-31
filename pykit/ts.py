@@ -37,6 +37,10 @@ def from_date(date_micros: int) -> str:
     return from_timestamp(date_micros, DATE_FORMAT_DAY)
 
 
+def now_utc() -> int:
+    return int(dt.utcnow().timestamp() * 1e6)
+
+
 def to_timestamp(timestamp_value: str, timestamp_format: str = TIMESTAMP_FORMAT) -> int:
     timestamp = dt.strptime(timestamp_value, timestamp_format)
     timestamp = pytz.utc.localize(timestamp, is_dst=None).astimezone(pytz.utc)
